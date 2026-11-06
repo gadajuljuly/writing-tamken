@@ -177,3 +177,4 @@ textarea { resize: vertical; }
 .free-ai h3 { margin: 0; }
 .free-ai p { margin: 0; }
 .free-ai textarea { width: 100%; }
+.btn.big { font-size: 1.05rem; padding: 12px 22px; }

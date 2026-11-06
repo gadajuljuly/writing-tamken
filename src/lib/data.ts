@@ -222,11 +222,11 @@ export const setAiResult = (id: number, draft: MinuteContent, tasks: { title: st
   must(supabase.rpc("wt_minute_set_ai_result", { p_id: id, p_draft: normalizeMinute(draft), p_tasks: tasks }) as any);
 
 // ---------- AI (Supabase Edge Function "organize-minutes") ----------
-export type AiMode = "anthropic" | "off";
+export type AiMode = "gemini" | "anthropic" | "off";
 let aiModeCache: Promise<AiMode> | null = null;
 export function aiMode(): Promise<AiMode> {
   aiModeCache ??= supabase.functions.invoke("organize-minutes", { body: { ping: true } })
-    .then(({ data, error }) => (!error && data?.mode === "anthropic" ? "anthropic" : "off"))
+    .then(({ data, error }) => (!error && (data?.mode === "gemini" || data?.mode === "anthropic") ? data.mode : "off"))
     .catch(() => "off" as const);
   return aiModeCache;
 }
