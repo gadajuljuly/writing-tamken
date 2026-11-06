@@ -254,12 +254,14 @@ export default function MinutePage() {
       </div>
 
       <section className="card ai-panel">
-        {ai === "anthropic" && (
-          <button className="btn primary" onClick={organize} disabled={busy} data-testid="organize">
-            ✨ {busy ? t.organizing : t.organizeAI}
-          </button>
-        )}
-        <FreeAi m={m} />
+        {ai && ai !== "off" ? (
+          <>
+            <button className="btn primary big" onClick={organize} disabled={busy} data-testid="organize">
+              ✨ {busy ? t.organizing : t.organizeAI}
+            </button>
+            <details className="small"><summary>{t.altManualAi}</summary><FreeAi m={m} /></details>
+          </>
+        ) : <FreeAi m={m} />}
         {msg && <p className="small" role="status">{msg}</p>}
         <button className="link-btn small" onClick={() => setShowRaw(!showRaw)}>{t.rawText}</button>
         {showRaw && <pre className="raw">{m.raw_text}</pre>}

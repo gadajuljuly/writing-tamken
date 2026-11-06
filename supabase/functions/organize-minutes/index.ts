@@ -1,12 +1,10 @@
-// Supabase Edge Function: organizes raw meeting minutes with Claude and proposes tasks.
-// It runs with the caller's own login (RLS applies) and only writes a DRAFT + proposals;
-// nothing is approved here — the uploader approves in the app.
+// Supabase Edge Function "organize-minutes": one click organizes the raw minutes
+// into the template and proposes tasks. It runs with the caller's own login (RLS
+// applies) and only writes a DRAFT + proposals; the uploader approves in the app.
 //
-// Secrets (Supabase → Edge Functions → Secrets):  ANTHROPIC_API_KEY  (required)
-//                                                  ANTHROPIC_MODEL    (optional, default claude-opus-5-5)
-import Anthropic from "npm:@anthropic-ai/sdk";
-import { zodOutputFormat } from "npm:@anthropic-ai/sdk/helpers/zod";
-import { z } from "npm:zod@4";
+// Secrets (Supabase → Edge Functions → Secrets) — set ONE of:
+//   GEMINI_API_KEY     free key from https://aistudio.google.com/apikey   (optional GEMINI_MODEL)
+//   ANTHROPIC_API_KEY  paid key from https://console.anthropic.com       (optional ANTHROPIC_MODEL)
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
@@ -36,56 +34,114 @@ const AXES: Record<string, string[]> = {
   ],
 };
 
-const Result = z.object({
-  minutes: z.object({
-    title: z.string(),
-    date: z.string(),
-    participants: z.array(z.string()),
-    topics: z.array(z.string()),
-    discussions: z.array(z.string()),
-    decisions: z.array(z.string()),
-    tasks: z.array(z.object({ task: z.string(), owners: z.array(z.string()) })),
-    notes: z.array(z.string()),
-  }),
-  new_tasks: z.array(z.object({
-    title: z.string(),
-    description: z.string(),
-    axis: z.number().int(),
-    assignees: z.array(z.string()),
-  })),
-});
-
-function systemPrompt(comp: string, members: string[], existing: string[]) {
+function instructions(comp: string, members: string[], existing: string[]) {
   const lang = comp === "ar" ? "Modern Standard Arabic (العربية الفصحى)" : "standard formal Hebrew";
   return `You organize meeting minutes for the committee of a school writing competition.
 
-Rewrite the raw minutes (which may be a WhatsApp chat, rough notes or a document) into clear, correct, formal ${lang}.
-Strict rules:
-- Keep every name, number, date, place, detail and decision that appears in the source. Do not drop information.
-- Never invent anything. If a field is not present in the source, leave it empty ("" or []).
-- Do not add opinions, conclusions or tasks that are not stated or clearly agreed in the source.
-- Use people's names as written in the source; if a name clearly matches a known committee member below, use the member's spelling.
+1. Rewrite the raw minutes (WhatsApp chat, rough notes or a document) into clear, correct, formal ${lang}.
+2. Keep EVERY name, number, date, place, detail and decision from the source. Drop nothing.
+3. NEVER invent anything. If something is not in the source, leave it empty ("" or []).
+4. Organize into the template: title, date, participants, topics (agenda items), discussions, decisions, tasks (each with owners), notes.
+5. Then list new_tasks: the NEW action items the committee agreed on, each with a short title, a one-sentence description (only from the source), the responsible people (assignees) if stated, and the best axis number below (use 6 if none clearly fits).
+6. Do not list tasks that already exist (see below), even if worded differently.
 
-Structure the minutes into: title, date, participants, topics (agenda items), discussions, decisions, tasks (each with its owners), notes.
-
-Then list new_tasks: concrete action items the committee agreed to carry out.
-- For each: a short title, a one-sentence description (only from the source) and the responsible people (assignees) if stated.
-- Give each task the number of the best matching axis below; if none clearly fits, use 6:
+AXES
 ${AXES[comp].map((a, i) => `${i + 1}. ${a}`).join("\n")}
-- Do not include tasks that already exist in the list below (same meaning, even if worded differently).
 
-Known committee members: ${members.join(", ") || "(none)"}
-Existing tasks:
-${existing.map((t) => `- ${t}`).join("\n") || "(none)"}`;
+KNOWN COMMITTEE MEMBERS (use these spellings when a name clearly matches): ${members.join(", ") || "(none)"}
+
+EXISTING TASKS
+${existing.map((t) => `- ${t}`).join("\n") || "(none)"}
+
+Reply with ONLY this JSON (no other text):
+{"minutes":{"title":"","date":"","participants":[],"topics":[],"discussions":[],"decisions":[],"tasks":[{"task":"","owners":[]}],"notes":[]},
+ "new_tasks":[{"title":"","description":"","axis":6,"assignees":[]}]}`;
+}
+
+// ---------- providers ----------
+const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
+
+async function askGemini(system: string, user: string): Promise<string> {
+  const key = Deno.env.get("GEMINI_API_KEY")!;
+  const models = Deno.env.get("GEMINI_MODEL") ? [Deno.env.get("GEMINI_MODEL")!] : GEMINI_MODELS;
+  let last = "";
+  for (const model of models) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: user }] }],
+        generationConfig: { responseMimeType: "application/json" },
+      }),
+    });
+    if (res.status === 404) { last = `model ${model} not found`; continue; } // try the next model name
+    const data = await res.json();
+    if (!res.ok) throw new Error(`gemini ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
+    const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
+    if (!text) throw new Error("gemini returned no text");
+    return text;
+  }
+  throw new Error(last || "no gemini model available");
+}
+
+async function askClaude(system: string, user: string): Promise<string> {
+  const { default: Anthropic } = await import("npm:@anthropic-ai/sdk");
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: Deno.env.get("ANTHROPIC_MODEL") || "claude-opus-5-5",
+    max_tokens: 16000,
+    system,
+    messages: [{ role: "user", content: user }],
+  });
+  if (response.stop_reason === "refusal") throw new Error("refused");
+  return response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+}
+
+function provider(): "gemini" | "anthropic" | "off" {
+  if (Deno.env.get("GEMINI_API_KEY")) return "gemini";
+  if (Deno.env.get("ANTHROPIC_API_KEY")) return "anthropic";
+  return "off";
+}
+
+// ---------- answer parsing (same rules as the app) ----------
+const strArr = (v: unknown): string[] =>
+  Array.isArray(v) ? v.map((x) => String(x ?? "").trim()).filter(Boolean) : typeof v === "string" && v.trim() ? [v.trim()] : [];
+
+function parse(text: string) {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  let body = fenced ? fenced[1] : text;
+  body = body.slice(body.indexOf("{"), body.lastIndexOf("}") + 1);
+  const data = JSON.parse(body);
+  const m = data.minutes ?? {};
+  return {
+    minutes: {
+      title: String(m.title ?? "").trim(), date: String(m.date ?? "").trim(),
+      participants: strArr(m.participants), topics: strArr(m.topics), discussions: strArr(m.discussions),
+      decisions: strArr(m.decisions), notes: strArr(m.notes),
+      tasks: Array.isArray(m.tasks)
+        ? m.tasks.map((t: any) => ({ task: String(t?.task ?? "").trim(), owners: strArr(t?.owners) })).filter((t: any) => t.task)
+        : [],
+    },
+    tasks: (Array.isArray(data.new_tasks) ? data.new_tasks : [])
+      .map((t: any) => {
+        const axis = Number(t?.axis);
+        return {
+          title: String(t?.title ?? "").trim(), description: String(t?.description ?? "").trim(),
+          axis: Number.isInteger(axis) && axis >= 1 && axis <= 6 ? axis : 6, assignees: strArr(t?.assignees),
+        };
+      })
+      .filter((t: any) => t.title),
+  };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const body = await req.json().catch(() => ({}));
-    const hasKey = !!Deno.env.get("ANTHROPIC_API_KEY");
-    if (body.ping) return reply({ mode: hasKey ? "anthropic" : "off" });
-    if (!hasKey) return reply({ error: "ai_off" }, 503);
+    const mode = provider();
+    if (body.ping) return reply({ mode });
+    if (mode === "off") return reply({ error: "ai_off" }, 503);
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
@@ -93,31 +149,23 @@ Deno.serve(async (req) => {
     const { data: m, error } = await supabase.from("wt_minutes").select("*").eq("id", body.minute_id).single();
     if (error || !m) return reply({ error: "not_found" }, 404);
     if (!m.raw_text?.trim()) return reply({ error: "no_text" }, 400);
-
     const { data: members } = await supabase.from("wt_members").select("name").eq("competition", m.competition);
     const { data: tasks } = await supabase.from("wt_tasks").select("title").eq("competition", m.competition);
 
-    const client = new Anthropic();
-    const response = await client.messages.parse({
-      model: Deno.env.get("ANTHROPIC_MODEL") || "claude-opus-5-5",
-      max_tokens: 16000,
-      system: systemPrompt(m.competition, (members ?? []).map((x) => x.name), (tasks ?? []).map((x) => x.title)),
-      messages: [{
-        role: "user",
-        content: `Meeting title (may be empty): ${m.title}\nMeeting date (may be empty): ${m.meeting_date}\n\n<raw_minutes>\n${m.raw_text}\n</raw_minutes>`,
-      }],
-      output_config: { format: zodOutputFormat(Result) },
-    });
-    if (response.stop_reason === "refusal" || !response.parsed_output) return reply({ error: "ai_failed" }, 502);
+    const system = instructions(m.competition, (members ?? []).map((x) => x.name), (tasks ?? []).map((x) => x.title));
+    const user = `MEETING TITLE: ${m.title || "(empty)"}\nMEETING DATE: ${m.meeting_date || "(empty)"}\n\nRAW MINUTES\n<<<\n${m.raw_text}\n>>>`;
 
-    const out = response.parsed_output;
-    const { error: e2 } = await supabase.rpc("wt_minute_set_ai_result", {
-      p_id: m.id,
-      p_draft: out.minutes,
-      p_tasks: out.new_tasks.map((t) => ({ ...t, axis: t.axis >= 1 && t.axis <= 6 ? t.axis : 6 })),
-    });
+    let result;
+    try {
+      result = parse(mode === "gemini" ? await askGemini(system, user) : await askClaude(system, user));
+    } catch (e) {
+      console.error("AI failed", e);
+      return reply({ error: "ai_failed" }, 502);
+    }
+
+    const { error: e2 } = await supabase.rpc("wt_minute_set_ai_result", { p_id: m.id, p_draft: result.minutes, p_tasks: result.tasks });
     if (e2) return reply({ error: e2.message }, 400);
-    return reply({ ok: true, suggestions: out.new_tasks.length });
+    return reply({ ok: true, mode, suggestions: result.tasks.length });
   } catch (e) {
     console.error(e);
     return reply({ error: "ai_failed" }, 502);

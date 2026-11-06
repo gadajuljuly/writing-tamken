@@ -36,12 +36,14 @@
 1. נכנסים ל־**Authentication**, ואז ל־**Sign In / Providers**, ואז ל־**Email**.
 2. כדי שההרשמה תהיה פשוטה יותר, אפשר לכבות את **Confirm email**. אם האפשרות נשארת דלוקה, כל חבר ועדה יאשר את כתובת המייל שלו בפעם הראשונה.
 
-### 3. Supabase: בינה מלאכותית (לא חובה)
-1. נכנסים ל־**Edge Functions**, לוחצים **Deploy a new function** ובוחרים **Via Editor**.
-2. בשם הפונקציה כותבים `organize-minutes`, מדביקים את התוכן של [`supabase/functions/organize-minutes/index.ts`](supabase/functions/organize-minutes/index.ts) ולוחצים **Deploy**.
-3. נכנסים ל־**Edge Functions**, ואז ל־**Secrets**, ומוסיפים `ANTHROPIC_API_KEY` עם מפתח מ־https://console.anthropic.com
+### 3. בינה מלאכותית בחינם (Gemini): כפתור אחד שמסדר את הפרוטוקול
+1. נכנסים ל־https://aistudio.google.com/apikey, לוחצים **Create API key** ומעתיקים את המפתח. זה בחינם ולא צריך כרטיס אשראי.
+2. ב־Supabase נכנסים ל־**Edge Functions**, לוחצים **Deploy a new function** ובוחרים **Via Editor**. בשם הפונקציה כותבים `organize-minutes`, מדביקים את התוכן של [`supabase/functions/organize-minutes/index.ts`](supabase/functions/organize-minutes/index.ts) ולוחצים **Deploy**.
+3. נכנסים ל־**Edge Functions**, ואז ל־**Secrets**, ומוסיפים `GEMINI_API_KEY` עם המפתח שהעתקתם.
 
-בלי השלב הזה האפליקציה עובדת במלואה, רק שהסידור של הפרוטוקול והוספת המשימות נעשים ידנית.
+שימו לב: בתוכנית החינמית Google רשאית להשתמש בטקסטים שנשלחים אליה כדי לשפר את השירותים שלה.
+
+אם רוצים להשתמש ב־Claude (בתשלום), מגדירים `ANTHROPIC_API_KEY` במקום. בלי מפתח בכלל, הדף מציע העתקה והדבקה ידנית לכל צ'אט AI חינמי.
 
 ### 4. חיבור האתר ל־Supabase
 בקובץ [`.env.production`](.env.production) כותבים את **Project URL** ואת **anon public key** (נמצאים ב־**Project Settings**, תחת **API**). שני הערכים האלה ציבוריים, ומותר לשמור אותם במאגר.
