@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
-    "test": "node --test tests/db.test.mjs"
+    "test": "node --test tests/db.test.mjs tests/ai-prompt.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

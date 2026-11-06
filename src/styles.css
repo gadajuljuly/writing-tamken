@@ -173,3 +173,7 @@ textarea { resize: vertical; }
   .card { padding: 14px; }
   .history th:first-child, .history td:first-child { width: 90px; }
 }
+.free-ai { display: grid; gap: 8px; justify-items: start; width: 100%; }
+.free-ai h3 { margin: 0; }
+.free-ai p { margin: 0; }
+.free-ai textarea { width: 100%; }

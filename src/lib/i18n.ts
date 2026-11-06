@@ -67,6 +67,11 @@ const ar = {
   allEntities: "الكل", entity_task: "مهمة", entity_minute: "محضر", entity_member: "مسؤول",
   saved: "تم الحفظ", error: "حدث خطأ",
   syncing: "متزامن",
+  freeAiTitle: "تنظيم المحضر بالذكاء الاصطناعي (مجانًا)",
+  freeAiStep1: "1. انسخي المحضر مع التعليمات", freeAiCopy: "📋 نسخ إلى الذكاء الاصطناعي", freeAiCopied: "تم النسخ ✓",
+  freeAiStep2: "2. افتحي Claude أو ChatGPT أو Gemini (الحساب المجاني يكفي)، الصقي النص وأرسليه، ثم انسخي الجواب كاملًا",
+  freeAiStep3: "3. الصقي الجواب هنا", freeAiPastePh: "الصقي جواب الذكاء الاصطناعي هنا…", freeAiApply: "📥 تطبيق النتيجة",
+  freeAiApplied: "نُظّم المحضر واقتُرحت المهام — راجعيها وعدّليها قبل الاعتماد.",
   joinTitle: "الانضمام إلى اللجنة", join: "انضمام", notConfigured: "لم يُربط التطبيق بـ Supabase بعد (VITE_SUPABASE_URL).",
 };
 type Dict = typeof ar;
@@ -113,6 +118,11 @@ const he: Dict = {
   allEntities: "הכול", entity_task: "משימה", entity_minute: "פרוטוקול", entity_member: "אחראי",
   saved: "נשמר", error: "אירעה שגיאה",
   syncing: "מסונכרן",
+  freeAiTitle: "ארגון הפרוטוקול בבינה מלאכותית (בחינם)",
+  freeAiStep1: "1. העתיקו את הפרוטוקול עם ההוראות", freeAiCopy: "📋 העתקה לבינה מלאכותית", freeAiCopied: "הועתק ✓",
+  freeAiStep2: "2. פתחו Claude, ChatGPT או Gemini (חשבון חינמי מספיק), הדביקו ושלחו, ואז העתיקו את כל התשובה",
+  freeAiStep3: "3. הדביקו את התשובה כאן", freeAiPastePh: "הדביקו כאן את תשובת הבינה המלאכותית…", freeAiApply: "📥 החלת התוצאה",
+  freeAiApplied: "הפרוטוקול אורגן והוצעו משימות — בדקו וערכו לפני האישור.",
   joinTitle: "הצטרפות לוועדה", join: "הצטרפות", notConfigured: "האפליקציה עדיין לא מחוברת ל-Supabase (VITE_SUPABASE_URL).",
 };
 export const DICT: Record<Comp, Dict> = { ar, he };
@@ -144,7 +154,7 @@ export const ERRORS: Record<Comp, Record<string, string>> = {
     file_too_large: "الملف أكبر من 10MB", confirm_email: "أُرسل إليك بريد تأكيد. أكّد البريد ثم سجّل الدخول", upload_failed: "تعذّر رفع الملف", not_found: "غير موجود", only_uploader: "هذا الإجراء متاح فقط لمن رفع المحضر",
     ai_off: "الذكاء الاصطناعي غير مفعّل", ai_failed: "تعذّر تنظيم المحضر الآن، حاول مجددًا", bad_url: "الرابط يجب أن يبدأ بـ https://",
     title_required: "العنوان مطلوب", text_required: "النص مطلوب", file_required: "اختر ملفًا", no_text: "لم يُستخرج نص من الملف، الصق النص يدويًا",
-    signup_disabled: "التسجيل غير مفعّل", empty: "المحضر فارغ",
+    signup_disabled: "التسجيل غير مفعّل", bad_ai_answer: "لم أفهم الجواب. انسخي جواب الذكاء الاصطناعي كاملًا وحاولي مجددًا", empty: "المحضر فارغ",
   },
   he: {
     duplicate: "כבר קיימת משימה דומה", bad_code: "קוד הוועדה שגוי", email_taken: "כתובת הדוא\"ל כבר רשומה",
@@ -152,6 +162,6 @@ export const ERRORS: Record<Comp, Record<string, string>> = {
     file_too_large: "הקובץ גדול מ-10MB", confirm_email: "נשלח אליך מייל אימות. אשרו אותו והיכנסו", upload_failed: "העלאת הקובץ נכשלה", not_found: "לא נמצא", only_uploader: "הפעולה זמינה רק למי שהעלה את הפרוטוקול",
     ai_off: "הבינה המלאכותית לא מחוברת", ai_failed: "לא ניתן לארגן כרגע, נסו שוב", bad_url: "הקישור חייב להתחיל ב-https://",
     title_required: "נדרשת כותרת", text_required: "נדרש טקסט", file_required: "בחרו קובץ", no_text: "לא חולץ טקסט מהקובץ, הדביקו אותו ידנית",
-    signup_disabled: "ההרשמה סגורה", empty: "הפרוטוקול ריק",
+    signup_disabled: "ההרשמה סגורה", bad_ai_answer: "התשובה לא זוהתה. העתיקו את כל תשובת הבינה המלאכותית ונסו שוב", empty: "הפרוטוקול ריק",
   },
 };
