@@ -198,3 +198,4 @@ textarea { resize: vertical; }
   .choose-tile { min-height: 170px; }
   .choose-title { font-size: 1.3rem; }
 }
+.dot { transition: background-color .08s ease, transform .08s ease; } .dot:active { transform: scale(.88); }

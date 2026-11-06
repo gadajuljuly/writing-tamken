@@ -37,16 +37,19 @@ export function TaskForm({ task, axis, onClose }: { task?: Task; axis?: number; 
   }
 
   return (
-    <Modal title={task ? t.editTask : t.newTask} onClose={onClose}>
+    <Modal title={task ? t.editTask : `${t.newTask}: ${AXES[comp].find((a) => a.id === f.axis)?.title ?? ""}`} onClose={onClose}>
       <form className="form" onSubmit={save}>
         <label>{t.title}<input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required autoFocus name="title" /></label>
         <label>{t.description}<textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} name="description" /></label>
         <div className="row-2">
-          <label>{t.axis}
-            <select value={f.axis} onChange={(e) => setF({ ...f, axis: Number(e.target.value) })} name="axis">
-              {AXES[comp].map((a) => <option key={a.id} value={a.id}>{a.id}. {a.title}</option>)}
-            </select>
-          </label>
+          {/* A new task belongs to the axis whose "+" was pressed; the axis is only changeable when editing. */}
+          {task && (
+            <label>{t.axis}
+              <select value={f.axis} onChange={(e) => setF({ ...f, axis: Number(e.target.value) })} name="axis">
+                {AXES[comp].map((a) => <option key={a.id} value={a.id}>{a.id}. {a.title}</option>)}
+              </select>
+            </label>
+          )}
           <label>{t.status}
             <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as Task["status"] })} name="status">
               {STATUSES.map((s) => <option key={s} value={s}>{t[s]}</option>)}
