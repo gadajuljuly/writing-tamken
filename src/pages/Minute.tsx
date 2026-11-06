@@ -246,7 +246,6 @@ export default function MinutePage() {
             <span className={`badge ${m.status}`}>{m.status === "approved" ? `${t.approved} · ${t.version} ${m.current_version}` : t.draft}</span>
             {m.has_pending_changes && m.status === "approved" && <span className="badge pending">{t.pending}</span>}
             {m.archived && <span className="badge">{t.archived}</span>}
-            <span className="muted small">{t.uploadedBy}: {m.uploader?.name}</span>
             {m.source_file_path && <SourceFile path={m.source_file_path} name={m.source_file_name ?? "file"} />}
           </div>
         </div>
