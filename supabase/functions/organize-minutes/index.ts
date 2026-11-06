@@ -60,42 +60,58 @@ Reply with ONLY this JSON (no other text):
 
 // ---------- providers ----------
 const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
+const AI_TIMEOUT_MS = 110_000; // stay under the Edge Function time limit
+let workingModel: string | null = null; // remembered while this function instance is warm
 
-async function askGemini(system: string, user: string): Promise<string> {
-  const key = Deno.env.get("GEMINI_API_KEY")!;
-  const models = Deno.env.get("GEMINI_MODEL") ? [Deno.env.get("GEMINI_MODEL")!] : GEMINI_MODELS;
-  let last = "";
+async function geminiCall(model: string, system: string, user: string, thinking: boolean) {
+  const generationConfig: Record<string, unknown> = { responseMimeType: "application/json" };
+  if (thinking) generationConfig.thinkingConfig = { thinkingLevel: "low" }; // faster answers on models that "think"
+  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+    headers: { "Content-Type": "application/json", "x-goog-api-key": Deno.env.get("GEMINI_API_KEY")! },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: user }] }],
+      generationConfig,
+    }),
+  });
+}
+
+async function askGemini(system: string, user: string): Promise<{ text: string; model: string }> {
+  const fixed = Deno.env.get("GEMINI_MODEL");
+  const models = fixed ? [fixed] : workingModel ? [workingModel, ...GEMINI_MODELS.filter((m) => m !== workingModel)] : GEMINI_MODELS;
+  const errors: string[] = [];
   for (const model of models) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts: [{ text: user }] }],
-        generationConfig: { responseMimeType: "application/json" },
-      }),
-    });
-    if (res.status === 404) { last = `model ${model} not found`; continue; } // try the next model name
+    let res = await geminiCall(model, system, user, true);
+    if (res.status === 400) {
+      const err = await res.text();
+      if (!/thinking/i.test(err)) throw new Error(`gemini 400: ${err.slice(0, 300)}`);
+      res = await geminiCall(model, system, user, false); // model without thinking settings
+    }
+    if (res.status === 404) { errors.push(`${model}: not found`); continue; }
     const data = await res.json();
     if (!res.ok) throw new Error(`gemini ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
     const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
-    if (!text) throw new Error("gemini returned no text");
-    return text;
+    if (!text) throw new Error(`gemini returned no text: ${JSON.stringify(data).slice(0, 300)}`);
+    workingModel = model;
+    return { text, model };
   }
-  throw new Error(last || "no gemini model available");
+  throw new Error(errors.join("; ") || "no gemini model available");
 }
 
-async function askClaude(system: string, user: string): Promise<string> {
+async function askClaude(system: string, user: string): Promise<{ text: string; model: string }> {
   const { default: Anthropic } = await import("npm:@anthropic-ai/sdk");
-  const client = new Anthropic();
+  const client = new Anthropic({ timeout: AI_TIMEOUT_MS, maxRetries: 0 });
+  const model = Deno.env.get("ANTHROPIC_MODEL") || "claude-opus-5-5";
   const response = await client.messages.create({
-    model: Deno.env.get("ANTHROPIC_MODEL") || "claude-opus-5-5",
+    model,
     max_tokens: 16000,
     system,
     messages: [{ role: "user", content: user }],
   });
   if (response.stop_reason === "refusal") throw new Error("refused");
-  return response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+  return { text: response.content.map((b) => (b.type === "text" ? b.text : "")).join(""), model };
 }
 
 function provider(): "gemini" | "anthropic" | "off" {
@@ -141,6 +157,18 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const mode = provider();
     if (body.ping) return reply({ mode });
+    if (body.check) {
+      // Health check: one tiny AI call; tells which model answers and how fast (no user data involved).
+      if (mode === "off") return reply({ mode });
+      const t0 = Date.now();
+      try {
+        const sys = 'Reply with exactly this JSON: {"ok":true}';
+        const r = mode === "gemini" ? await askGemini(sys, "ping") : await askClaude(sys, "ping");
+        return reply({ mode, model: r.model, ms: Date.now() - t0, answer: r.text.slice(0, 100) });
+      } catch (e) {
+        return reply({ mode, ms: Date.now() - t0, error: String(e).slice(0, 400) }, 502);
+      }
+    }
     if (mode === "off") return reply({ error: "ai_off" }, 503);
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -156,11 +184,15 @@ Deno.serve(async (req) => {
     const user = `MEETING TITLE: ${m.title || "(empty)"}\nMEETING DATE: ${m.meeting_date || "(empty)"}\n\nRAW MINUTES\n<<<\n${m.raw_text}\n>>>`;
 
     let result;
+    const t0 = Date.now();
     try {
-      result = parse(mode === "gemini" ? await askGemini(system, user) : await askClaude(system, user));
+      const r = mode === "gemini" ? await askGemini(system, user) : await askClaude(system, user);
+      console.info(`AI answered with ${r.model} in ${Date.now() - t0} ms`);
+      result = parse(r.text);
     } catch (e) {
       console.error("AI failed", e);
-      return reply({ error: "ai_failed" }, 502);
+      const timedOut = e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError");
+      return reply({ error: timedOut ? "ai_timeout" : "ai_failed" }, timedOut ? 504 : 502);
     }
 
     const { error: e2 } = await supabase.rpc("wt_minute_set_ai_result", { p_id: m.id, p_draft: result.minutes, p_tasks: result.tasks });

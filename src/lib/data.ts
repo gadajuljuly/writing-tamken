@@ -10,7 +10,7 @@ export class ApiError extends Error {
   constructor(public code: string, public data: Record<string, unknown> = {}) { super(code); }
 }
 
-const KNOWN = ["duplicate", "only_uploader", "bad_code", "title_required", "not_found", "already_added", "bad_minute", "ai_off", "ai_failed", "no_text", "unauthorized"];
+const KNOWN = ["duplicate", "only_uploader", "bad_code", "title_required", "not_found", "already_added", "bad_minute", "ai_off", "ai_failed", "ai_timeout", "no_text", "unauthorized"];
 function fail(error: { message?: string; code?: string; details?: string; hint?: string } | null): never {
   const msg = error?.message ?? "error";
   const code = KNOWN.find((k) => msg.includes(k)) ?? (error?.code === "23505" ? "duplicate" : "error");
@@ -231,7 +231,12 @@ export function aiMode(): Promise<AiMode> {
   return aiModeCache;
 }
 export async function organizeMinute(id: number) {
-  const { data, error } = await supabase.functions.invoke("organize-minutes", { body: { minute_id: id } });
+  // Never wait forever: the function itself stops after ~2 minutes.
+  const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new ApiError("ai_timeout")), 150_000));
+  const { data, error } = await Promise.race([
+    supabase.functions.invoke("organize-minutes", { body: { minute_id: id } }),
+    timeout,
+  ]);
   if (error) {
     let code = "ai_failed";
     try { code = (await (error as any).context?.json())?.error ?? code; } catch { /* keep default */ }
