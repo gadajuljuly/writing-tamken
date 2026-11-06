@@ -4,14 +4,23 @@ import { STATUSES } from "@/lib/i18n";
 import { addFileItem, addLinkItem, addSuggestionItem, deleteItem, deleteTask, fileUrl, updateTask, type Task, type TaskItem } from "@/lib/data";
 import { fmtDate, useComp } from "./ui";
 
-export function StatusControl({ task }: { task: Task }) {
-  const { t } = useComp();
+type Status = Task["status"];
+
+/** Traffic light: the colour changes instantly; saving happens in the background. */
+export function StatusControl({ task, status, onChange }: { task: Task; status: Status; onChange: (s: Status) => void }) {
+  const { t, err } = useComp();
+  async function pick(s: Status) {
+    if (s === status) return;
+    const before = status;
+    onChange(s); // optimistic
+    try { await updateTask(task.id, { status: s }); }
+    catch (e) { onChange(before); alert(err(e)); }
+  }
   return (
     <div className="status-control" role="radiogroup" aria-label={t.status}>
       {STATUSES.map((s) => (
-        <button key={s} type="button" role="radio" aria-checked={task.status === s} title={t[s]}
-          className={`dot ${s} ${task.status === s ? "on" : ""}`} data-status={s}
-          onClick={() => task.status !== s && updateTask(task.id, { status: s })}>
+        <button key={s} type="button" role="radio" aria-checked={status === s} title={t[s]}
+          className={`dot ${s} ${status === s ? "on" : ""}`} data-status={s} onClick={() => pick(s)}>
           <span className="dot-label">{t[s]}</span>
         </button>
       ))}
@@ -118,10 +127,12 @@ function Extras({ task }: { task: Task }) {
 export function TaskRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
   const { comp, t } = useComp();
   const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<Status>(task.status);
+  useEffect(() => setStatus(task.status), [task.status]);
   return (
-    <li className={`task ${task.status}`} data-testid="task" data-title={task.title}>
+    <li className={`task ${status}`} data-testid="task" data-title={task.title}>
       <div className="task-main">
-        <StatusControl task={task} />
+        <StatusControl task={task} status={status} onChange={setStatus} />
         <div className="task-body">
           <button className="task-title" onClick={() => setOpen(!open)} aria-expanded={open}>{task.title}</button>
           <div className="task-meta">
