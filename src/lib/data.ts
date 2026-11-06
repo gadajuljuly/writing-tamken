@@ -85,7 +85,7 @@ export type Task = {
 export const listTasks = (comp: Comp) =>
   read<Task[]>(supabase.from("wt_tasks")
     .select("*, items:wt_task_items(*), source_minute:wt_minutes!wt_tasks_source_minute_id_fkey(title), decision_minute:wt_minutes!wt_tasks_decision_minute_id_fkey(title)")
-    .eq("competition", comp).order("axis").order("created_at").order("id").order("id", { referencedTable: "wt_task_items" }) as any);
+    .eq("competition", comp).is("deleted_at", null).order("axis").order("created_at").order("id").order("id", { referencedTable: "wt_task_items" }) as any);
 
 export type TaskInput = Partial<Pick<Task, "title" | "description" | "axis" | "assignees" | "status" | "notes" | "proposal_approved" | "decision_minute_id">>;
 
@@ -93,7 +93,13 @@ export const createTask = (comp: Comp, t: TaskInput) =>
   must<{ id: number }>(supabase.from("wt_tasks").insert({ ...t, competition: comp }).select("id").single() as any);
 
 export const updateTask = (id: number, t: TaskInput) => must(supabase.from("wt_tasks").update(t).eq("id", id) as any);
-export const deleteTask = (id: number) => must(supabase.from("wt_tasks").delete().eq("id", id) as any);
+/** Deleting moves the task to the recycle bin; it can be restored (undo) or removed for good. */
+export const deleteTask = (id: number) => must(supabase.from("wt_tasks").update({ deleted_at: new Date().toISOString() }).eq("id", id) as any);
+export const restoreTask = (id: number) => must(supabase.from("wt_tasks").update({ deleted_at: null }).eq("id", id) as any);
+export const purgeTask = (id: number) => must(supabase.from("wt_tasks").delete().eq("id", id) as any);
+export const listDeletedTasks = (comp: Comp) =>
+  read<{ id: number; title: string; axis: number; deleted_at: string }[]>(supabase.from("wt_tasks").select("id, title, axis, deleted_at")
+    .eq("competition", comp).not("deleted_at", "is", null).order("deleted_at", { ascending: false }) as any);
 
 export const documentDecision = (taskId: number, minuteId: number, text: string) =>
   must(supabase.rpc("wt_document_decision", { p_task: taskId, p_minute: minuteId, p_text: text }) as any);
@@ -165,7 +171,7 @@ export const getMinute = (id: number) =>
   read<Minute>(supabase.from("wt_minutes").select(`*, uploader:wt_profiles(name),
     versions:wt_minute_versions(version, content, created_at, approver:wt_profiles(name)),
     suggestions:wt_suggestions(id, title, description, axis, assignees, state, duplicate:wt_tasks!wt_suggestions_duplicate_of_fkey(title)),
-    linked:wt_tasks!wt_tasks_source_minute_id_fkey(id, title, status)`)
+    linked:wt_tasks!wt_tasks_source_minute_id_fkey(id, title, status, deleted_at)`)
     .eq("id", id).order("version", { referencedTable: "wt_minute_versions", ascending: false })
     .order("id", { referencedTable: "wt_suggestions" }).single() as any);
 
@@ -250,7 +256,7 @@ export async function organizeMinute(id: number) {
 export type AuditEntry = { id: number; entity: string; entity_id: number; action: string; summary: string; changes: Record<string, any>; created_at: string; user: { name: string } | null };
 
 export async function summary(comp: Comp) {
-  const statuses = await read<{ status: string }[]>(supabase.from("wt_tasks").select("status").eq("competition", comp) as any);
+  const statuses = await read<{ status: string }[]>(supabase.from("wt_tasks").select("status").eq("competition", comp).is("deleted_at", null) as any);
   const counts = { not_started: 0, in_progress: 0, done: 0 };
   for (const s of statuses) counts[s.status as keyof typeof counts]++;
   const [minutes, updates] = await Promise.all([

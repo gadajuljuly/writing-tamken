@@ -246,7 +246,6 @@ export default function MinutePage() {
             <span className={`badge ${m.status}`}>{m.status === "approved" ? `${t.approved} · ${t.version} ${m.current_version}` : t.draft}</span>
             {m.has_pending_changes && m.status === "approved" && <span className="badge pending">{t.pending}</span>}
             {m.archived && <span className="badge">{t.archived}</span>}
-            <span className="muted small">{t.uploadedBy}: {m.uploader?.name}</span>
             {m.source_file_path && <SourceFile path={m.source_file_path} name={m.source_file_name ?? "file"} />}
           </div>
         </div>
@@ -273,7 +272,7 @@ export default function MinutePage() {
       {m.linked.length > 0 && (
         <section className="card">
           <h3>{t.tasks}</h3>
-          <ul className="list">{m.linked.map((x) => <li key={x.id}><span className={`dot-mini ${x.status}`} />{x.title}</li>)}</ul>
+          <ul className="list">{m.linked.filter((x: any) => !x.deleted_at).map((x) => <li key={x.id}><span className={`dot-mini ${x.status}`} />{x.title}</li>)}</ul>
         </section>
       )}
 
