@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { STATUSES } from "@/lib/i18n";
-import { addFileItem, addLinkItem, addSuggestionItem, deleteItem, deleteTask, fileUrl, updateTask, type Task, type TaskItem } from "@/lib/data";
+import { addFileItem, addLinkItem, addSuggestionItem, deleteItem, fileUrl, updateTask, type Task, type TaskItem } from "@/lib/data";
 import { fmtDate, useComp } from "./ui";
 
 type Status = Task["status"];
@@ -124,7 +124,7 @@ function Extras({ task }: { task: Task }) {
   );
 }
 
-export function TaskRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
+export function TaskRow({ task, onEdit, onDelete }: { task: Task; onEdit: () => void; onDelete: (t: Task) => void }) {
   const { comp, t } = useComp();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>(task.status);
@@ -134,7 +134,11 @@ export function TaskRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
       <div className="task-main">
         <StatusControl task={task} status={status} onChange={setStatus} />
         <div className="task-body">
-          <button className="task-title" onClick={() => setOpen(!open)} aria-expanded={open}>{task.title}</button>
+          <div className="task-head">
+            <button className="task-title" onClick={() => setOpen(!open)} aria-expanded={open}>{task.title}</button>
+            <button className="icon-btn trash" title={t.delete} aria-label={`${t.delete}: ${task.title}`} data-testid="delete-task"
+              onClick={() => onDelete(task)}>🗑</button>
+          </div>
           <div className="task-meta">
             {task.assignees.map((a) => <span key={a} className="person">{a}</span>)}
             {task.proposal_approved && <span className="badge approved">✓ {t.proposalApproved}</span>}
@@ -152,7 +156,6 @@ export function TaskRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
               <Extras task={task} />
               <div className="actions">
                 <button className="btn small" onClick={onEdit}>{t.edit}</button>
-                <button className="btn small danger" onClick={() => confirm(t.confirmDelete) && deleteTask(task.id)}>{t.delete}</button>
               </div>
             </div>
           )}

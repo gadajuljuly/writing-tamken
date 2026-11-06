@@ -72,7 +72,7 @@ const ar = {
   freeAiStep2: "2. افتحي Claude أو ChatGPT أو Gemini (الحساب المجاني يكفي)، الصقي النص وأرسليه، ثم انسخي الجواب كاملًا",
   freeAiStep3: "3. الصقي الجواب هنا", freeAiPastePh: "الصقي جواب الذكاء الاصطناعي هنا…", freeAiApply: "📥 تطبيق النتيجة",
   freeAiApplied: "نُظّم المحضر واقتُرحت المهام — راجعيها وعدّليها قبل الاعتماد.",
-  allCompetitions: "المسابقات",
+  allCompetitions: "المسابقات", taskDeleted: "حُذفت المهمة", undo: "تراجع ↩", deletedTasks: "المهام المحذوفة", restoreTask: "استرجاع", purge: "حذف نهائي", confirmPurge: "حذف المهمة نهائيًا؟ لا يمكن التراجع بعد ذلك.",
   joinTitle: "الانضمام إلى اللجنة", join: "انضمام", notConfigured: "لم يُربط التطبيق بـ Supabase بعد (VITE_SUPABASE_URL).",
 };
 type Dict = typeof ar;
@@ -124,7 +124,7 @@ const he: Dict = {
   freeAiStep2: "2. פתחו Claude, ChatGPT או Gemini (חשבון חינמי מספיק), הדביקו ושלחו, ואז העתיקו את כל התשובה",
   freeAiStep3: "3. הדביקו את התשובה כאן", freeAiPastePh: "הדביקו כאן את תשובת הבינה המלאכותית…", freeAiApply: "📥 החלת התוצאה",
   freeAiApplied: "הפרוטוקול אורגן והוצעו משימות — בדקו וערכו לפני האישור.",
-  allCompetitions: "התחרויות",
+  allCompetitions: "התחרויות", taskDeleted: "המשימה נמחקה", undo: "ביטול ↩", deletedTasks: "משימות שנמחקו", restoreTask: "שחזור", purge: "מחיקה לצמיתות", confirmPurge: "למחוק את המשימה לצמיתות? לא ניתן יהיה לבטל.",
   joinTitle: "הצטרפות לוועדה", join: "הצטרפות", notConfigured: "האפליקציה עדיין לא מחוברת ל-Supabase (VITE_SUPABASE_URL).",
 };
 export const DICT: Record<Comp, Dict> = { ar, he };
@@ -132,7 +132,7 @@ export type { Dict };
 
 export const ACTIONS: Record<Comp, Record<string, string>> = {
   ar: {
-    created: "أُضيفت مهمة", created_from_minute: "أُضيفت مهمة من محضر", updated: "عُدّلت مهمة", status: "تغيّرت حالة مهمة",
+    created: "أُضيفت مهمة", restored: "استُرجعت مهمة", purged: "حُذفت مهمة نهائيًا", created_from_minute: "أُضيفت مهمة من محضر", updated: "عُدّلت مهمة", status: "تغيّرت حالة مهمة",
     deleted: "حُذفت مهمة", item_added: "أُضيف مرفق إلى مهمة", item_removed: "أُزيل مرفق من مهمة",
     member_added: "أُضيف مسؤول", minute_created: "رُفع محضر", minute_organized: "نُظّم محضر بالذكاء الاصطناعي",
     minute_edited: "عُدّلت مسودة محضر", minute_approved: "اعتُمد محضر", minute_restored: "استُرجعت نسخة سابقة من محضر",
@@ -140,7 +140,7 @@ export const ACTIONS: Record<Comp, Record<string, string>> = {
     decision_documented: "وُثّق اعتماد اقتراح في محضر",
   },
   he: {
-    created: "נוספה משימה", created_from_minute: "נוספה משימה מפרוטוקול", updated: "משימה עודכנה", status: "סטטוס משימה השתנה",
+    created: "נוספה משימה", restored: "משימה שוחזרה", purged: "משימה נמחקה לצמיתות", created_from_minute: "נוספה משימה מפרוטוקול", updated: "משימה עודכנה", status: "סטטוס משימה השתנה",
     deleted: "משימה נמחקה", item_added: "נוסף צרופה למשימה", item_removed: "הוסרה צרופה ממשימה",
     member_added: "נוסף/ה אחראי/ת", minute_created: "הועלה פרוטוקול", minute_organized: "פרוטוקול אורגן בבינה מלאכותית",
     minute_edited: "טיוטת פרוטוקול נערכה", minute_approved: "פרוטוקול אושר", minute_restored: "שוחזרה גרסה קודמת של פרוטוקול",

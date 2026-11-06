@@ -176,6 +176,11 @@ create table if not exists public.wt_audit (
 );
 
 create index if not exists wt_tasks_comp_idx on public.wt_tasks (competition);
+
+-- deleted tasks go to a recycle bin (deleted_at) and can be restored
+alter table public.wt_tasks add column if not exists deleted_at timestamptz;
+alter table public.wt_tasks drop constraint if exists wt_tasks_competition_title_key_key;
+create unique index if not exists wt_tasks_live_title on public.wt_tasks (competition, title_key) where deleted_at is null;
 create index if not exists wt_minutes_comp_idx on public.wt_minutes (competition, archived);
 create index if not exists wt_audit_comp_idx on public.wt_audit (competition, created_at desc);
 
@@ -199,9 +204,9 @@ declare dup record;
 begin
   new.title := trim(new.title);
   new.title_key := wt_title_key(new.title);
-  if tg_op = 'INSERT' or new.title is distinct from old.title then
+  if new.deleted_at is null and (tg_op = 'INSERT' or new.title is distinct from old.title or old.deleted_at is not null) then
     select id, title into dup from wt_tasks
-     where competition = new.competition and id <> new.id and wt_is_dup(title, new.title) limit 1;
+     where competition = new.competition and id <> new.id and deleted_at is null and wt_is_dup(title, new.title) limit 1;
     if found then
       raise exception using errcode = '23505', message = 'duplicate', detail = dup.title, hint = dup.id::text;
     end if;
@@ -232,8 +237,13 @@ begin
     perform wt_log(new.competition, 'task', new.id,
       case when new.source_minute_id is null then 'created' else 'created_from_minute' end, new.title);
   elsif tg_op = 'DELETE' then
-    perform wt_log(old.competition, 'task', old.id, 'deleted', old.title);
+    perform wt_log(old.competition, 'task', old.id, 'purged', old.title);
   else
+    if old.deleted_at is null and new.deleted_at is not null then
+      perform wt_log(new.competition, 'task', new.id, 'deleted', new.title); return null;
+    elsif old.deleted_at is not null and new.deleted_at is null then
+      perform wt_log(new.competition, 'task', new.id, 'restored', new.title); return null;
+    end if;
     o := to_jsonb(old); n := to_jsonb(new);
     foreach f in array array['title','description','axis','assignees','status','notes','proposal_approved','decision_minute_id'] loop
       if o -> f is distinct from n -> f then ch := ch || jsonb_build_object(f, jsonb_build_object('from', o -> f, 'to', n -> f)); end if;
@@ -322,7 +332,7 @@ declare s record; m wt_minutes; dup integer; seen text[] := '{}'; t text; sib bo
 begin
   select * into m from wt_minutes where id = p_minute;
   for s in select * from wt_suggestions where minute_id = p_minute and state in ('pending','duplicate') order by id loop
-    select id into dup from wt_tasks where competition = m.competition and wt_is_dup(title, s.title) limit 1;
+    select id into dup from wt_tasks where competition = m.competition and deleted_at is null and wt_is_dup(title, s.title) limit 1;
     sib := false;
     foreach t in array seen loop if wt_is_dup(t, s.title) then sib := true; end if; end loop;
     if dup is not null or sib then
@@ -487,7 +497,7 @@ revoke all on public.wt_profiles, public.wt_members, public.wt_minutes, public.w
 grant select on public.wt_profiles, public.wt_members, public.wt_minutes, public.wt_minute_versions,
   public.wt_tasks, public.wt_task_items, public.wt_suggestions, public.wt_audit to authenticated;
 grant insert on public.wt_members, public.wt_minutes, public.wt_tasks, public.wt_task_items to authenticated;
-grant update (title, description, axis, assignees, status, notes, proposal_approved, decision_minute_id) on public.wt_tasks to authenticated;
+grant update (title, description, axis, assignees, status, notes, proposal_approved, decision_minute_id, deleted_at) on public.wt_tasks to authenticated;
 grant delete on public.wt_tasks, public.wt_task_items to authenticated;
 grant usage, select on sequence public.wt_members_id_seq, public.wt_minutes_id_seq, public.wt_tasks_id_seq,
   public.wt_task_items_id_seq to authenticated;

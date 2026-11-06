@@ -172,3 +172,21 @@ test("attachments: links must be http(s); items are logged", async () => {
   const log = await rows(U.ghada, "select action from wt_audit where entity_id = $1 and action = 'item_added'", [task.id]);
   assert.equal(log.length, 2);
 });
+
+test("delete goes to the recycle bin; undo restores; duplicates checked on restore", async () => {
+  const [t] = await rows(U.rana, `insert into wt_tasks (competition, axis, title, notes) values ('ar', 2, 'تصميم البوستر', 'ملاحظة') returning id`);
+  await rows(U.rana, "insert into wt_task_items (task_id, kind, body) values ($1, 'suggestion', 'فكرة')", [t.id]);
+  await rows(U.rana, "update wt_tasks set deleted_at = now() where id = $1", [t.id]);
+  const live = await rows(U.ghada, "select id from wt_tasks where competition = 'ar' and deleted_at is null and id = $1", [t.id]);
+  assert.equal(live.length, 0);
+  // a new task with the same title is allowed while the old one is in the bin…
+  const [t2] = await rows(U.ghada, `insert into wt_tasks (competition, axis, title) values ('ar', 2, 'تصميم البوستر') returning id`);
+  // …so restoring the old one now would duplicate it
+  await fails(rows(U.rana, "update wt_tasks set deleted_at = null where id = $1", [t.id]), /duplicate/);
+  await rows(U.ghada, "delete from wt_tasks where id = $1", [t2.id]); // permanent delete
+  const [back] = await rows(U.rana, "update wt_tasks set deleted_at = null where id = $1 returning notes", [t.id]);
+  assert.equal(back.notes, "ملاحظة");
+  assert.equal((await rows(U.ghada, "select id from wt_task_items where task_id = $1", [t.id])).length, 1, "attachments kept");
+  const actions = (await rows(U.ghada, "select action from wt_audit where entity = 'task' and entity_id in ($1, $2) order by id", [t.id, t2.id])).map((r) => r.action);
+  assert.deepEqual(actions.filter((a) => a !== "item_added"), ["created", "deleted", "created", "purged", "restored"]);
+});

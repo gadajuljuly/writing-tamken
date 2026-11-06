@@ -199,3 +199,10 @@ textarea { resize: vertical; }
   .choose-title { font-size: 1.3rem; }
 }
 .dot { transition: background-color .08s ease, transform .08s ease; } .dot:active { transform: scale(.88); }
+.task-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.icon-btn.trash { opacity: .55; font-size: 1rem; padding: 2px 6px; border-radius: 8px; }
+.icon-btn.trash:hover { opacity: 1; background: #f8e6e4; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 14px;
+  background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(27,42,74,.3); max-width: calc(100% - 24px); }
+.toast .btn { background: var(--accent); color: var(--navy); border-color: var(--accent); }
+.bin .list li .small.muted { margin-inline-start: 0; }
