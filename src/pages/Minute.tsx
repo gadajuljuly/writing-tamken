@@ -1,10 +1,11 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AXES } from "@/lib/i18n";
+import { buildPrompt, parseAnswer } from "@/lib/aiPrompt";
 import { emptyMinute, type MinuteContent } from "@/lib/minute";
 import { fmtDate, useComp, useData } from "@/components/ui";
 import { addSuggestion, aiMode, applySuggestions, approveMinute, fileUrl, getMinute, organizeMinute, restoreVersion, saveDraft,
-  setArchived, setSuggestionState, updateSuggestion, type Minute as MinuteData } from "@/lib/data";
+  setAiResult, setArchived, setSuggestionState, updateSuggestion, listMembers, listTasks, ApiError, type Minute as MinuteData } from "@/lib/data";
 
 type Minute = MinuteData & { isUploader: boolean };
 
@@ -162,6 +163,53 @@ function Suggestions({ m }: { m: Minute }) {
   );
 }
 
+/** Free option: copy a ready prompt to any AI chat, paste the answer back. */
+function FreeAi({ m }: { m: Minute }) {
+  const { comp, t, err } = useComp();
+  const [copied, setCopied] = useState(false);
+  const [answer, setAnswer] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function copy() {
+    setMsg("");
+    const [members, tasks] = await Promise.all([listMembers(comp), listTasks(comp)]);
+    const text = buildPrompt({
+      comp, title: m.title, date: m.meeting_date, raw: m.raw_text, axes: AXES[comp],
+      members: members.map((x) => x.name), existingTasks: tasks.map((x) => x.title),
+    });
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
+  }
+  async function apply() {
+    setMsg(""); setBusy(true);
+    try {
+      let parsed;
+      try { parsed = parseAnswer(answer); } catch { throw new ApiError("bad_ai_answer"); }
+      await setAiResult(m.id, parsed.minutes, parsed.tasks);
+      setAnswer(""); setMsg(t.freeAiApplied);
+    } catch (e) { setMsg(err(e)); } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="free-ai" data-testid="free-ai">
+      <h3>✨ {t.freeAiTitle}</h3>
+      <p className="small">{t.freeAiStep1}</p>
+      <button className="btn" onClick={copy} disabled={!m.raw_text.trim()} data-testid="free-ai-copy">{copied ? t.freeAiCopied : t.freeAiCopy}</button>
+      <p className="small">{t.freeAiStep2}</p>
+      <p className="small">{t.freeAiStep3}</p>
+      <textarea rows={4} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder={t.freeAiPastePh} dir="auto" data-testid="free-ai-answer" />
+      <button className="btn primary" onClick={apply} disabled={busy || !answer.trim()} data-testid="free-ai-apply">{t.freeAiApply}</button>
+      {msg && <p className="small" role="status">{msg}</p>}
+    </div>
+  );
+}
+
 function SourceFile({ path, name }: { path: string; name: string }) {
   const { t } = useComp();
   const open = async () => window.open(await fileUrl(path, name), "_blank", "noopener");
@@ -206,11 +254,12 @@ export default function MinutePage() {
       </div>
 
       <section className="card ai-panel">
-        {ai === "off" ? <p className="muted">{t.aiOff}</p> : (
-          <button className="btn primary" onClick={organize} disabled={busy || !ai} data-testid="organize">
+        {ai === "anthropic" && (
+          <button className="btn primary" onClick={organize} disabled={busy} data-testid="organize">
             ✨ {busy ? t.organizing : t.organizeAI}
           </button>
         )}
+        <FreeAi m={m} />
         {msg && <p className="small" role="status">{msg}</p>}
         <button className="link-btn small" onClick={() => setShowRaw(!showRaw)}>{t.rawText}</button>
         {showRaw && <pre className="raw">{m.raw_text}</pre>}

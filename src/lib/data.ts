@@ -217,6 +217,10 @@ export const setSuggestionState = (id: number, state: "pending" | "rejected") =>
 export const applySuggestions = (minute: number, ids: number[]) =>
   must<{ added: number; skipped: number }>(supabase.rpc("wt_minute_apply", { p_minute: minute, p_ids: ids }) as any);
 
+// ---------- free AI: answer pasted from any AI chat ----------
+export const setAiResult = (id: number, draft: MinuteContent, tasks: { title: string; description: string; axis: number; assignees: string[] }[]) =>
+  must(supabase.rpc("wt_minute_set_ai_result", { p_id: id, p_draft: normalizeMinute(draft), p_tasks: tasks }) as any);
+
 // ---------- AI (Supabase Edge Function "organize-minutes") ----------
 export type AiMode = "anthropic" | "off";
 let aiModeCache: Promise<AiMode> | null = null;
