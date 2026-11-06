@@ -1,13 +1,12 @@
-"use client";
 import { useState } from "react";
 import { AXES, STATUSES } from "@/lib/i18n";
-import { api, Modal, useComp, useData, ApiError } from "./client";
+import { Modal, useComp, useData } from "./ui";
 import { AssigneePicker } from "./AssigneePicker";
-import type { Task } from "./types";
+import { ApiError, createTask, documentDecision, listMinutes, updateTask, type Task } from "@/lib/data";
 
 export function TaskForm({ task, axis, onClose }: { task?: Task; axis?: number; onClose: () => void }) {
   const { comp, t, err } = useComp();
-  const { data: minutes = [] } = useData<{ id: number; title: string; meeting_date: string }[]>(`/api/c/${comp}/minutes`, 60000);
+  const { data: minutes = [] } = useData(() => listMinutes(comp), [comp], 60000);
   const [f, setF] = useState({
     title: task?.title ?? "",
     description: task?.description ?? "",
@@ -25,11 +24,12 @@ export function TaskForm({ task, axis, onClose }: { task?: Task; axis?: number; 
     e.preventDefault();
     setBusy(true); setError("");
     try {
-      if (task) await api("PATCH", `/api/tasks/${task.id}`, f);
-      else {
-        const { id } = await api<{ id: number }>("POST", `/api/c/${comp}/tasks`, f);
-        if (f.proposal_approved) await api("PATCH", `/api/tasks/${id}`, { proposal_approved: true, decision_minute_id: f.decision_minute_id, decision_text: f.decision_text });
-      }
+      const { decision_text, ...fields } = f;
+      let id = task?.id;
+      if (task) await updateTask(task.id, fields);
+      else id = (await createTask(comp, fields)).id;
+      const decisionChanged = !task || !task.proposal_approved || task.decision_minute_id !== f.decision_minute_id || !!decision_text.trim();
+      if (f.proposal_approved && f.decision_minute_id && decisionChanged) await documentDecision(id!, f.decision_minute_id, decision_text);
       onClose();
     } catch (e) {
       setError(e instanceof ApiError && e.code === "duplicate" && e.data.duplicateTitle ? `${t.duplicate}: «${e.data.duplicateTitle}»` : err(e));
