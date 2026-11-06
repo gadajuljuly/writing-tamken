@@ -1,9 +1,10 @@
 node_modules
-.next
-.data
+dist
 .env
 .env.local
 test-results
 playwright-report
-next-env.d.ts
 *.tsbuildinfo
+.next
+.data
+next-env.d.ts

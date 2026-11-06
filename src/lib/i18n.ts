@@ -52,7 +52,7 @@ const ar = {
   newMinute: "محضر جديد", uploadFile: "رفع ملف PDF أو Word", pasteWhatsapp: "لصق نص WhatsApp", writeDirect: "كتابة المحضر مباشرة",
   meetingDate: "تاريخ الاجتماع", meetingTitle: "عنوان الاجتماع", create: "إنشاء",
   rawText: "النص الأصلي", organizeAI: "تنظيم المحضر واستخراج المهام بالذكاء الاصطناعي", organizing: "جارٍ التنظيم…",
-  aiOff: "الذكاء الاصطناعي غير مفعّل بعد (يلزم مفتاح ANTHROPIC_API_KEY). يمكنك تنظيم المحضر وإضافة المهام يدويًا.",
+  aiOff: "الذكاء الاصطناعي غير مفعّل بعد. يمكنك تنظيم المحضر وإضافة المهام يدويًا.",
   aiDone: "نُظّم المحضر بالذكاء الاصطناعي — راجعه وعدّله قبل الاعتماد.",
   participants: "المشاركون", topics: "المحاور", discussions: "المناقشات", decisions: "القرارات", minuteTasks: "المهام والمسؤولون", minuteNotes: "ملاحظات",
   onePerLine: "سطر لكل بند",
@@ -67,6 +67,7 @@ const ar = {
   allEntities: "الكل", entity_task: "مهمة", entity_minute: "محضر", entity_member: "مسؤول",
   saved: "تم الحفظ", error: "حدث خطأ",
   syncing: "متزامن",
+  joinTitle: "الانضمام إلى اللجنة", join: "انضمام", notConfigured: "لم يُربط التطبيق بـ Supabase بعد (VITE_SUPABASE_URL).",
 };
 type Dict = typeof ar;
 const he: Dict = {
@@ -97,7 +98,7 @@ const he: Dict = {
   newMinute: "פרוטוקול חדש", uploadFile: "העלאת קובץ PDF או Word", pasteWhatsapp: "הדבקת טקסט מ-WhatsApp", writeDirect: "כתיבה ישירה",
   meetingDate: "תאריך הישיבה", meetingTitle: "כותרת הישיבה", create: "יצירה",
   rawText: "הטקסט המקורי", organizeAI: "ארגון הפרוטוקול וחילוץ משימות בבינה מלאכותית", organizing: "מארגן…",
-  aiOff: "הבינה המלאכותית עדיין לא מחוברת (נדרש מפתח ANTHROPIC_API_KEY). אפשר לארגן את הפרוטוקול ולהוסיף משימות ידנית.",
+  aiOff: "הבינה המלאכותית עדיין לא מחוברת. אפשר לארגן את הפרוטוקול ולהוסיף משימות ידנית.",
   aiDone: "הפרוטוקול אורגן בבינה מלאכותית — בדקו וערכו לפני האישור.",
   participants: "משתתפים", topics: "נושאים", discussions: "דיונים", decisions: "החלטות", minuteTasks: "משימות ואחראים", minuteNotes: "הערות",
   onePerLine: "שורה לכל פריט",
@@ -112,6 +113,7 @@ const he: Dict = {
   allEntities: "הכול", entity_task: "משימה", entity_minute: "פרוטוקול", entity_member: "אחראי",
   saved: "נשמר", error: "אירעה שגיאה",
   syncing: "מסונכרן",
+  joinTitle: "הצטרפות לוועדה", join: "הצטרפות", notConfigured: "האפליקציה עדיין לא מחוברת ל-Supabase (VITE_SUPABASE_URL).",
 };
 export const DICT: Record<Comp, Dict> = { ar, he };
 export type { Dict };
@@ -139,7 +141,7 @@ export const ERRORS: Record<Comp, Record<string, string>> = {
   ar: {
     duplicate: "توجد مهمة مشابهة بالفعل", bad_code: "رمز اللجنة غير صحيح", email_taken: "البريد مسجّل مسبقًا",
     bad_login: "البريد أو كلمة المرور غير صحيحة", invalid: "تحقّق من الحقول (كلمة المرور 6 أحرف على الأقل)",
-    file_too_large: "الملف أكبر من 4MB", only_uploader: "هذا الإجراء متاح فقط لمن رفع المحضر",
+    file_too_large: "الملف أكبر من 10MB", confirm_email: "أُرسل إليك بريد تأكيد. أكّد البريد ثم سجّل الدخول", upload_failed: "تعذّر رفع الملف", not_found: "غير موجود", only_uploader: "هذا الإجراء متاح فقط لمن رفع المحضر",
     ai_off: "الذكاء الاصطناعي غير مفعّل", ai_failed: "تعذّر تنظيم المحضر الآن، حاول مجددًا", bad_url: "الرابط يجب أن يبدأ بـ https://",
     title_required: "العنوان مطلوب", text_required: "النص مطلوب", file_required: "اختر ملفًا", no_text: "لم يُستخرج نص من الملف، الصق النص يدويًا",
     signup_disabled: "التسجيل غير مفعّل", empty: "المحضر فارغ",
@@ -147,7 +149,7 @@ export const ERRORS: Record<Comp, Record<string, string>> = {
   he: {
     duplicate: "כבר קיימת משימה דומה", bad_code: "קוד הוועדה שגוי", email_taken: "כתובת הדוא\"ל כבר רשומה",
     bad_login: "דוא\"ל או סיסמה שגויים", invalid: "בדקו את השדות (סיסמה של 6 תווים לפחות)",
-    file_too_large: "הקובץ גדול מ-4MB", only_uploader: "הפעולה זמינה רק למי שהעלה את הפרוטוקול",
+    file_too_large: "הקובץ גדול מ-10MB", confirm_email: "נשלח אליך מייל אימות. אשרו אותו והיכנסו", upload_failed: "העלאת הקובץ נכשלה", not_found: "לא נמצא", only_uploader: "הפעולה זמינה רק למי שהעלה את הפרוטוקול",
     ai_off: "הבינה המלאכותית לא מחוברת", ai_failed: "לא ניתן לארגן כרגע, נסו שוב", bad_url: "הקישור חייב להתחיל ב-https://",
     title_required: "נדרשת כותרת", text_required: "נדרש טקסט", file_required: "בחרו קובץ", no_text: "לא חולץ טקסט מהקובץ, הדביקו אותו ידנית",
     signup_disabled: "ההרשמה סגורה", empty: "הפרוטוקול ריק",

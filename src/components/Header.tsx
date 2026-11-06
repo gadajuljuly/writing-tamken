@@ -1,14 +1,19 @@
-"use client";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { DICT, type Comp } from "@/lib/i18n";
-import { api } from "./client";
+import { signOut } from "@/lib/data";
 
-export function Header({ comp, logo }: { comp: Comp; logo: string | null }) {
+/** Shows public/logo.png (or logo.svg) when the file exists. */
+function Logo() {
+  const [src, setSrc] = useState<string | null>("logo.png");
+  if (!src) return <span className="logo-placeholder" aria-hidden />;
+  return <img src={src} alt="logo" className="logo" onError={() => setSrc(src === "logo.png" ? "logo.svg" : null)} />;
+}
+
+export function Header({ comp }: { comp: Comp }) {
   const t = DICT[comp];
-  const path = usePathname();
-  const router = useRouter();
+  const { pathname: path } = useLocation();
+  const navigate = useNavigate();
   const other: Comp = comp === "ar" ? "he" : "ar";
 
   useEffect(() => { document.documentElement.lang = comp; }, [comp]);
@@ -28,14 +33,10 @@ export function Header({ comp, logo }: { comp: Comp; logo: string | null }) {
   return (
     <header className="site-header">
       <div className="topbar">
-        <div className="brand">
-          {logo ? <img src={logo} alt="logo" className="logo" /> : <span className="logo-placeholder" aria-hidden />}
-        </div>
+        <div className="brand"><Logo /></div>
         <div className="topbar-end">
-          <button className="lang-btn" onClick={() => router.push(target)} data-testid="lang-toggle">{t.switchTo}</button>
-          <button className="link-btn" onClick={async () => { await api("POST", "/api/auth/logout"); window.location.href = "/login"; }}>
-            {t.logout}
-          </button>
+          <button className="lang-btn" onClick={() => navigate(target)} data-testid="lang-toggle">{t.switchTo}</button>
+          <button className="link-btn" onClick={async () => { await signOut(); navigate("/login"); }}>{t.logout}</button>
           <span className="owner-name">{t.owner}</span>
         </div>
       </div>
@@ -43,7 +44,7 @@ export function Header({ comp, logo }: { comp: Comp; logo: string | null }) {
         <h1 className="comp-title">{t.competition}</h1>
         <nav className="tabs">
           {nav.map((n) => (
-            <Link key={n.href} href={n.href} className={`tab ${active(n.href) ? "active" : ""}`}>{n.label}</Link>
+            <Link key={n.href} to={n.href} className={`tab ${active(n.href) ? "active" : ""}`}>{n.label}</Link>
           ))}
         </nav>
       </div>

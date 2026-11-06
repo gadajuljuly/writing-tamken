@@ -1,11 +1,11 @@
-"use client";
 import { useState } from "react";
-import { api, useComp, useData } from "./client";
+import { useComp, useData } from "./ui";
+import { addMember, listMembers } from "@/lib/data";
 
 /** Multi-select of committee members. Hebrew competition can add new names (saved for later use). */
 export function AssigneePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const { comp, t, err } = useComp();
-  const { data: members = [], reload } = useData<{ id: number; name: string }[]>(`/api/c/${comp}/members`, 30000);
+  const { data: members = [], reload } = useData(() => listMembers(comp), [comp], 30000);
   const [name, setName] = useState("");
   const [msg, setMsg] = useState("");
   const names = [...new Set([...members.map((m) => m.name), ...value])];
@@ -15,7 +15,7 @@ export function AssigneePicker({ value, onChange }: { value: string[]; onChange:
     const n = name.trim();
     if (!n) return;
     try {
-      await api("POST", `/api/c/${comp}/members`, { name: n });
+      await addMember(comp, n);
       await reload();
       if (!value.includes(n)) onChange([...value, n]);
       setName("");

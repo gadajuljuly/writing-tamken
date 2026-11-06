@@ -1,9 +1,8 @@
-"use client";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { STATUSES } from "@/lib/i18n";
-import { api, fmtDate, useComp } from "./client";
-import type { Task } from "./types";
+import { addFileItem, addLinkItem, addSuggestionItem, deleteItem, deleteTask, fileUrl, updateTask, type Task, type TaskItem } from "@/lib/data";
+import { fmtDate, useComp } from "./ui";
 
 export function StatusControl({ task }: { task: Task }) {
   const { t } = useComp();
@@ -12,7 +11,7 @@ export function StatusControl({ task }: { task: Task }) {
       {STATUSES.map((s) => (
         <button key={s} type="button" role="radio" aria-checked={task.status === s} title={t[s]}
           className={`dot ${s} ${task.status === s ? "on" : ""}`} data-status={s}
-          onClick={() => task.status !== s && api("PATCH", `/api/tasks/${task.id}`, { status: s })}>
+          onClick={() => task.status !== s && updateTask(task.id, { status: s })}>
           <span className="dot-label">{t[s]}</span>
         </button>
       ))}
@@ -23,14 +22,13 @@ export function StatusControl({ task }: { task: Task }) {
 function Notes({ task }: { task: Task }) {
   const { t } = useComp();
   const [v, setV] = useState(task.notes);
-  const [state, setState] = useState<"" | "saving" | "saved">("");
+  const [state, setState] = useState<"" | "saved">("");
   const editing = useRef(false);
   useEffect(() => { if (!editing.current) setV(task.notes); }, [task.notes]);
   async function save() {
     editing.current = false;
     if (v === task.notes) return;
-    setState("saving");
-    await api("PATCH", `/api/tasks/${task.id}`, { notes: v });
+    await updateTask(task.id, { notes: v });
     setState("saved");
     setTimeout(() => setState(""), 1500);
   }
@@ -43,6 +41,18 @@ function Notes({ task }: { task: Task }) {
   );
 }
 
+/** Private files are opened through short-lived signed links. */
+function FileItem({ item }: { item: TaskItem }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (item.file_path) fileUrl(item.file_path).then((u) => alive && setUrl(u)).catch(() => {});
+    return () => { alive = false; };
+  }, [item.file_path]);
+  if (item.kind === "image") return url ? <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={item.label} /></a> : <span>🖼 {item.label}</span>;
+  return url ? <a href={url} target="_blank" rel="noreferrer">📎 {item.label}</a> : <span>📎 {item.label}</span>;
+}
+
 function Extras({ task }: { task: Task }) {
   const { t, err } = useComp();
   const [mode, setMode] = useState<"" | "link" | "suggestion">("");
@@ -53,15 +63,15 @@ function Extras({ task }: { task: Task }) {
   async function upload(files: FileList | null) {
     setMsg("");
     for (const file of Array.from(files ?? [])) {
-      const fd = new FormData(); fd.append("file", file);
-      try { await api("POST", `/api/tasks/${task.id}/items`, fd); } catch (e) { setMsg(err(e)); }
+      try { await addFileItem(task, file); } catch (e) { setMsg(err(e)); }
     }
     if (fileRef.current) fileRef.current.value = "";
   }
   async function addOther(e: React.FormEvent) {
     e.preventDefault(); setMsg("");
     try {
-      await api("POST", `/api/tasks/${task.id}/items`, mode === "link" ? { kind: "link", url, label } : { kind: "suggestion", body });
+      if (mode === "link") await addLinkItem(task.id, url.trim(), label.trim());
+      else await addSuggestionItem(task.id, body.trim());
       setUrl(""); setLabel(""); setBody(""); setMode("");
     } catch (e) { setMsg(err(e)); }
   }
@@ -73,11 +83,10 @@ function Extras({ task }: { task: Task }) {
         <ul className="items">
           {task.items.map((i) => (
             <li key={i.id} className={`item ${i.kind}`}>
-              {i.kind === "image" && <a href={`/api/files/${i.file_id}`} target="_blank"><img src={`/api/files/${i.file_id}`} alt={i.label} /></a>}
-              {i.kind === "file" && <a href={`/api/files/${i.file_id}`} target="_blank">📎 {i.label}</a>}
+              {(i.kind === "image" || i.kind === "file") && <FileItem item={i} />}
               {i.kind === "link" && <a href={i.url} target="_blank" rel="noopener noreferrer">🔗 {i.label || i.url}</a>}
               {i.kind === "suggestion" && <span>💡 {i.body}</span>}
-              <button className="icon-btn small" aria-label={t.delete} onClick={() => api("DELETE", `/api/items/${i.id}`)}>✕</button>
+              <button className="icon-btn small" aria-label={t.delete} onClick={() => deleteItem(i)}>✕</button>
             </li>
           ))}
         </ul>
@@ -126,13 +135,13 @@ export function TaskRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
               <p className="muted small">
                 {t.addedOn}: {fmtDate(task.created_at, comp)}
                 {task.completed_at && <> · {t.doneOn}: {fmtDate(task.completed_at, comp)}</>}
-                {task.source_minute_id && <> · {t.fromMinute}: <Link href={`/${comp}/minutes/${task.source_minute_id}`}>{task.source_minute_title || `#${task.source_minute_id}`}</Link></>}
-                {task.decision_minute_id && <> · {t.decisionMinute}: <Link href={`/${comp}/minutes/${task.decision_minute_id}`}>{task.decision_minute_title || `#${task.decision_minute_id}`}</Link></>}
+                {task.source_minute_id && <> · {t.fromMinute}: <Link to={`/${comp}/minutes/${task.source_minute_id}`}>{task.source_minute?.title || `#${task.source_minute_id}`}</Link></>}
+                {task.decision_minute_id && <> · {t.decisionMinute}: <Link to={`/${comp}/minutes/${task.decision_minute_id}`}>{task.decision_minute?.title || `#${task.decision_minute_id}`}</Link></>}
               </p>
               <Extras task={task} />
               <div className="actions">
                 <button className="btn small" onClick={onEdit}>{t.edit}</button>
-                <button className="btn small danger" onClick={() => confirm(t.confirmDelete) && api("DELETE", `/api/tasks/${task.id}`)}>{t.delete}</button>
+                <button className="btn small danger" onClick={() => confirm(t.confirmDelete) && deleteTask(task.id)}>{t.delete}</button>
               </div>
             </div>
           )}
