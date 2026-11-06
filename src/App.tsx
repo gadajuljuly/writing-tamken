@@ -11,10 +11,11 @@ import Tasks from "@/pages/Tasks";
 import Minutes from "@/pages/Minutes";
 import Minute from "@/pages/Minute";
 import History from "@/pages/History";
+import Choose from "@/pages/Choose";
 
 function CompLayout({ me }: { me: Me }) {
   const { comp = "" } = useParams();
-  if (!isComp(comp)) return <Navigate to="/ar" replace />;
+  if (!isComp(comp)) return <Navigate to="/" replace />;
   return (
     <CompProvider comp={comp} me={me}>
       <Header comp={comp} />
@@ -40,6 +41,7 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
+        <Route path="/" element={<Choose />} />
         <Route path="/:comp" element={<CompLayout me={me} />}>
           <Route index element={<Home />} />
           <Route path="tasks" element={<Tasks />} />
@@ -47,7 +49,7 @@ export default function App() {
           <Route path="minutes/:id" element={<Minute />} />
           <Route path="history" element={<History />} />
         </Route>
-        <Route path="*" element={<Navigate to="/ar" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>
   );

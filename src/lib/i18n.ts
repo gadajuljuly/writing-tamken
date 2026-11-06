@@ -72,6 +72,7 @@ const ar = {
   freeAiStep2: "2. افتحي Claude أو ChatGPT أو Gemini (الحساب المجاني يكفي)، الصقي النص وأرسليه، ثم انسخي الجواب كاملًا",
   freeAiStep3: "3. الصقي الجواب هنا", freeAiPastePh: "الصقي جواب الذكاء الاصطناعي هنا…", freeAiApply: "📥 تطبيق النتيجة",
   freeAiApplied: "نُظّم المحضر واقتُرحت المهام — راجعيها وعدّليها قبل الاعتماد.",
+  allCompetitions: "المسابقات",
   joinTitle: "الانضمام إلى اللجنة", join: "انضمام", notConfigured: "لم يُربط التطبيق بـ Supabase بعد (VITE_SUPABASE_URL).",
 };
 type Dict = typeof ar;
@@ -123,6 +124,7 @@ const he: Dict = {
   freeAiStep2: "2. פתחו Claude, ChatGPT או Gemini (חשבון חינמי מספיק), הדביקו ושלחו, ואז העתיקו את כל התשובה",
   freeAiStep3: "3. הדביקו את התשובה כאן", freeAiPastePh: "הדביקו כאן את תשובת הבינה המלאכותית…", freeAiApply: "📥 החלת התוצאה",
   freeAiApplied: "הפרוטוקול אורגן והוצעו משימות — בדקו וערכו לפני האישור.",
+  allCompetitions: "התחרויות",
   joinTitle: "הצטרפות לוועדה", join: "הצטרפות", notConfigured: "האפליקציה עדיין לא מחוברת ל-Supabase (VITE_SUPABASE_URL).",
 };
 export const DICT: Record<Comp, Dict> = { ar, he };
