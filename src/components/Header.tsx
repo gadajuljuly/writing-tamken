@@ -4,7 +4,7 @@ import { DICT, type Comp } from "@/lib/i18n";
 import { signOut } from "@/lib/data";
 
 /** Shows public/logo.png (or logo.svg) when the file exists. */
-function Logo() {
+export function Logo() {
   const [src, setSrc] = useState<string | null>("logo.png");
   if (!src) return <span className="logo-placeholder" aria-hidden />;
   return <img src={src} alt="logo" className="logo" onError={() => setSrc(src === "logo.png" ? "logo.svg" : null)} />;
@@ -33,7 +33,7 @@ export function Header({ comp }: { comp: Comp }) {
   return (
     <header className="site-header">
       <div className="topbar">
-        <div className="brand"><Logo /></div>
+        <Link to="/" className="brand" title={t.allCompetitions} data-testid="to-start"><Logo /><span className="brand-home">⌂ {t.allCompetitions}</span></Link>
         <div className="topbar-end">
           <button className="lang-btn" onClick={() => navigate(target)} data-testid="lang-toggle">{t.switchTo}</button>
           <button className="link-btn" onClick={async () => { await signOut(); navigate("/login"); }}>{t.logout}</button>
