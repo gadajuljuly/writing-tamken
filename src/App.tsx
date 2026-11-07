@@ -10,7 +10,6 @@ import Home from "@/pages/Home";
 import Tasks from "@/pages/Tasks";
 import Minutes from "@/pages/Minutes";
 import Minute from "@/pages/Minute";
-import History from "@/pages/History";
 import Choose from "@/pages/Choose";
 
 function CompLayout({ me }: { me: Me }) {
@@ -47,7 +46,6 @@ export default function App() {
           <Route path="tasks" element={<Tasks />} />
           <Route path="minutes" element={<Minutes />} />
           <Route path="minutes/:id" element={<Minute />} />
-          <Route path="history" element={<History />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

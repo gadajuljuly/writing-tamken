@@ -26,7 +26,6 @@ export function Header({ comp }: { comp: Comp }) {
     { href: `/${comp}`, label: t.home },
     { href: `/${comp}/tasks`, label: t.tasks },
     { href: `/${comp}/minutes`, label: t.minutes },
-    { href: `/${comp}/history`, label: t.history },
   ];
   const active = (href: string) => (href === `/${comp}` ? path === href : path.startsWith(href));
 
