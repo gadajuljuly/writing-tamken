@@ -213,3 +213,11 @@ textarea { resize: vertical; }
 .notes-label { font-weight: 700; color: var(--navy); font-size: .9rem; }
 .notes textarea { width: 100%; }
 .toast.update { bottom: auto; top: 14px; }
+
+/* notes box sits next to the task (to its left in RTL) and fills the remaining width */
+.task { grid-template-columns: minmax(220px, max-content) 1fr; align-items: start; gap: 16px; }
+.task-main { max-width: 520px; }
+@media (max-width: 760px) { .task { grid-template-columns: 1fr; } .task-main { max-width: none; } }
+/* same starting point for every notes box */
+.task { grid-template-columns: 360px 1fr; }
+@media (max-width: 760px) { .task { grid-template-columns: 1fr; } }
