@@ -291,3 +291,8 @@ textarea { resize: vertical; }
 .resource[draggable="true"] { cursor: grab; }
 .resource.dragging { opacity: .4; }
 .resource.drop-here { box-shadow: inset 0 3px 0 var(--accent-strong); }
+.list li.resource { grid-template-columns: 18px 28px minmax(0, 1fr) 32px 130px 32px; }
+.icon-btn.share { font-size: 1rem; opacity: .7; border-radius: 8px; padding: 2px 6px; }
+.icon-btn.share:hover { opacity: 1; background: var(--bg-soft); }
+.toast a.btn { color: var(--navy); text-decoration: none; }
+.toast .icon-btn { color: #fff; }

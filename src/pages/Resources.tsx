@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addResourceFile, addResourceLink, deleteResource, reorderResources, fileUrl, viewUrl, listResources, renameResource, type Resource } from "@/lib/data";
+import { addResourceFile, addResourceLink, deleteResource, reorderResources, shareUrl, fileUrl, viewUrl, listResources, renameResource, type Resource } from "@/lib/data";
 import { fmtDate, useComp, useData } from "@/components/ui";
 
 const TXT = {
@@ -8,14 +8,48 @@ const TXT = {
     name: "اسم المادة", addFile: "📎 رفع ملف", addLink: "🔗 إضافة رابط", link: "https://…", save: "إضافة",
     empty: "لا توجد مواد بعد", confirmDelete: "حذف هذه المادة؟", notReady: "قسم المواد المساعدة يحتاج تحديث قاعدة البيانات (ملف schema.sql).",
     uploading: "جارٍ الرفع…", rename: "تغيير الاسم", ok: "حفظ", cancel: "إلغاء",
+    share: "مشاركة", copied: "نُسخ الرابط. يمكنك لصقه في أي رسالة", whatsapp: "إرسال عبر WhatsApp",
   },
   he: {
     intro: "קבצים וקישורים שימושיים לכל חברי הוועדה: נושאי כתיבה, מחוון, תבניות תעודות, פוסטרים…",
     name: "שם החומר", addFile: "📎 העלאת קובץ", addLink: "🔗 הוספת קישור", link: "https://…", save: "הוספה",
     empty: "אין עדיין חומרים", confirmDelete: "למחוק את החומר?", notReady: "חלק חומרי העזר דורש עדכון של בסיס הנתונים (קובץ schema.sql).",
     uploading: "מעלה…", rename: "שינוי שם", ok: "שמירה", cancel: "ביטול",
+    share: "שיתוף", copied: "הקישור הועתק. אפשר להדביק אותו בכל הודעה", whatsapp: "שליחה ב-WhatsApp",
   },
 };
+
+/** 📤 share a permanent link to this one material (phone: share sheet; computer: copy + WhatsApp). */
+function ShareButton({ r, onError }: { r: Resource; onError: (e: unknown) => void }) {
+  const { comp } = useComp();
+  const x = TXT[comp];
+  const [shared, setShared] = useState<string | null>(null);
+  async function share() {
+    try {
+      const url = await shareUrl(r);
+      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+      if (nav.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        await nav.share({ title: r.title, text: r.title, url }).catch(() => {});
+        return;
+      }
+      await navigator.clipboard.writeText(url).catch(() => {});
+      setShared(url);
+      setTimeout(() => setShared(null), 15000);
+    } catch (e) { onError(e); }
+  }
+  return (
+    <>
+      <button className="icon-btn share" title={x.share} aria-label={`${x.share}: ${r.title}`} data-testid="share" onClick={share}>📤</button>
+      {shared && (
+        <div className="toast" role="status" data-testid="share-toast">
+          <span>{x.copied}</span>
+          <a className="btn small" href={`https://wa.me/?text=${encodeURIComponent(`${r.title}\n${shared}`)}`} target="_blank" rel="noreferrer">{x.whatsapp}</a>
+          <button className="icon-btn" onClick={() => setShared(null)} aria-label="close">✕</button>
+        </div>
+      )}
+    </>
+  );
+}
 
 type Drag = { onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDrop: () => void; onDragEnd: () => void; over: boolean; dragging: boolean };
 
@@ -59,6 +93,7 @@ function Item({ r, onDelete, onError, drag }: { r: Resource; onDelete: () => voi
           <button className="icon-btn" title={x.rename} aria-label={`${x.rename}: ${r.title}`} data-testid="rename" onClick={() => setEditing(true)}>✏️</button>
         </>
       )}</span>
+      <ShareButton r={r} onError={onError} />
       <span className="muted small res-date">{fmtDate(r.created_at, comp)}</span>
       <button className="icon-btn trash" aria-label="delete" onClick={onDelete}>🗑</button>
     </li>

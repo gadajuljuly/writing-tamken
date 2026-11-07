@@ -171,6 +171,20 @@ export async function viewUrl(path: string) {
   return /\.(docx?|xlsx?|pptx?)$/i.test(path) ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}` : url;
 }
 
+/**
+ * Permanent link for sharing a material with people outside the committee
+ * (learning material, not sensitive). Opens only that one file; Word/Excel/
+ * PowerPoint open in the online viewer.
+ */
+export async function shareUrl(r: { kind: string; url: string; file_path: string | null }) {
+  if (r.kind === "link" || !r.file_path) return r.url;
+  const { data, error } = await supabase.storage.from("wt-files").createSignedUrl(r.file_path, 60 * 60 * 24 * 365 * 100);
+  if (error) throw new ApiError("not_found");
+  return /\.(docx?|xlsx?|pptx?)$/i.test(r.file_path)
+    ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(data.signedUrl)}`
+    : data.signedUrl;
+}
+
 /** Short-lived signed link to a private file (only signed-in members can get one). */
 export async function fileUrl(path: string, download?: string) {
   const { data, error } = await supabase.storage.from("wt-files").createSignedUrl(path, 3600, download ? { download } : undefined);
