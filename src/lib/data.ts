@@ -71,6 +71,13 @@ export async function join(code: string, name: string) {
   if (error) fail(error);
 }
 
+/** Shared access: one committee account; the code is its password (kept only in Supabase). */
+const SHARED_ACCOUNT = "committee@writing-tamken.app";
+export async function signInWithCode(code: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email: SHARED_ACCOUNT, password: code.trim() });
+  if (error) throw new ApiError(/invalid/i.test(error.message) ? "bad_login" : "error");
+}
+
 export const signOut = () => supabase.auth.signOut();
 
 // ---------- tasks ----------

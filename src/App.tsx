@@ -35,7 +35,7 @@ export default function App() {
 
   if (me === undefined) return <p className="muted" style={{ padding: 24 }}>…</p>;
   if (me === null) return <Login onDone={refresh} />;
-  if (!me.name) return <Login onDone={refresh} joinOnly />; // signed in but not yet a committee member
+  if (!me.name) return <Login onDone={refresh} notReady />; // signed in, but the shared account is not a member yet
 
   return (
     <HashRouter>
