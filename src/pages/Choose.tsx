@@ -16,7 +16,7 @@ export default function Choose() {
   }, []);
 
   const tiles: { comp: Comp; title: string; sub: string; lang: string }[] = [
-    { comp: "ar", title: DICT.ar.competition, sub: "العربية", lang: "ar" },
+    { comp: "ar", title: DICT.ar.competition, sub: "", lang: "ar" },
     { comp: "he", title: DICT.he.competition, sub: "مسابقة الكتابة", lang: "he" },
   ];
 
@@ -40,7 +40,7 @@ export default function Choose() {
           <Link key={x.comp} to={`/${x.comp}`} className="choose-tile card" data-testid={`choose-${x.comp}`} lang={x.lang}>
             <span className="book-spine" aria-hidden="true" />
             <span className="choose-title">{x.title}</span>
-            <span className="choose-sub">{x.sub}</span>
+            {x.sub && <span className="choose-sub">{x.sub}</span>}
             {pct[x.comp] !== undefined && (
               <span className="choose-pct">
                 <span className="bar"><span style={{ width: `${pct[x.comp]}%` }} /></span>
