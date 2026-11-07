@@ -29,7 +29,7 @@ const ar = {
   owner: "غادة جلجولي",
   switchTo: "עברית",
   home: "الرئيسية", tasks: "قائمة المهام", minutes: "الاجتماعات", history: "سجل التعديلات",
-  minutesTitle: "اجتماعات لجنة المسابقة",
+  minutesTitle: "اجتماعات لجنة مسابقة الكتابة",
   overall: "نسبة الإنجاز العامة",
   not_started: "لم تبدأ", in_progress: "قيد التنفيذ", done: "تم",
   tasksCount: "مهمة",
