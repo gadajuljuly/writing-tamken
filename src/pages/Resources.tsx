@@ -9,7 +9,7 @@ const TXT = {
     empty: "لا توجد مواد بعد", confirmDelete: "حذف هذه المادة؟", notReady: "قسم المواد المساعدة يحتاج تحديث قاعدة البيانات (ملف schema.sql).",
     uploading: "جارٍ الرفع…", rename: "تغيير الاسم", ok: "حفظ", cancel: "إلغاء",
     share: "مشاركة", copied: "نُسخ الرابط. يمكنك لصقه في أي رسالة", whatsapp: "إرسال عبر WhatsApp",
-    select: "اختيار", shareSelected: "📤 مشاركة المختار", selectAll: "اختيار الكل", clear: "إلغاء الاختيار", copiedMany: "نُسخت الروابط. يمكنك لصقها في أي رسالة",
+    select: "اختيار", shareSelected: "📤 مشاركة المختار", selectAll: "اختيار الكل", clear: "إلغاء الاختيار", copiedMany: "نُزّلت الملفات إلى جهازك. أرفقيها في WhatsApp أو في البريد (والروابط نُسخت)",
   },
   he: {
     intro: "קבצים וקישורים שימושיים לכל חברי הוועדה: נושאי כתיבה, מחוון, תבניות תעודות, פוסטרים…",
@@ -17,7 +17,7 @@ const TXT = {
     empty: "אין עדיין חומרים", confirmDelete: "למחוק את החומר?", notReady: "חלק חומרי העזר דורש עדכון של בסיס הנתונים (קובץ schema.sql).",
     uploading: "מעלה…", rename: "שינוי שם", ok: "שמירה", cancel: "ביטול",
     share: "שיתוף", copied: "הקישור הועתק. אפשר להדביק אותו בכל הודעה", whatsapp: "שליחה ב-WhatsApp",
-    select: "בחירה", shareSelected: "📤 שיתוף הנבחרים", selectAll: "בחירת הכול", clear: "ניקוי הבחירה", copiedMany: "הקישורים הועתקו. אפשר להדביק אותם בכל הודעה",
+    select: "בחירה", shareSelected: "📤 שיתוף הנבחרים", selectAll: "בחירת הכול", clear: "ניקוי הבחירה", copiedMany: "הקבצים הורדו למחשב. צרפו אותם ב-WhatsApp או במייל (והקישורים הועתקו)",
   },
 };
 
@@ -116,24 +116,41 @@ export default function Resources() {
   // ✓ several materials, then share all their links in one message
   const [picked, setPicked] = useState<number[]>([]);
   const [sharedText, setSharedText] = useState<string | null>(null);
+  // ✓ several materials → sent as separate FILES (not a link to the app)
+  const [sharing, setSharing] = useState(false);
   async function shareSelected() {
+    setSharing(true); setMsg("");
     try {
       const chosen = list.filter((r) => picked.includes(r.id));
-      let text: string;
-      try {
-        // one short link → a page with all chosen materials
-        const link = await createShare(comp, chosen.map((r) => r.id), t.resources);
-        text = `${t.resources}:\n${chosen.map((r) => `• ${r.title}`).join("\n")}\n\n${link}`;
-      } catch {
-        const lines = await Promise.all(chosen.map(async (r) => `${r.title}\n${await shareUrl(r)}`));
-        text = lines.join("\n\n");
+      const fileItems = chosen.filter((r) => r.kind === "file" && r.file_path);
+      const links = chosen.filter((r) => r.kind === "link").map((r) => `${r.title}\n${r.url}`).join("\n\n");
+      const files = await Promise.all(fileItems.map(async (r) => {
+        const blob = await (await fetch(await fileUrl(r.file_path!))).blob();
+        const ext = r.file_path!.match(/\.[A-Za-z0-9]{1,8}$/)?.[0] ?? "";
+        const name = (r.title.endsWith(ext) ? r.title : r.title + ext).replace(/[\\/:*?"<>|]/g, "-");
+        return new File([blob], name, { type: r.mime || blob.type || "application/octet-stream" });
+      }));
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean; share?: (d: ShareData) => Promise<void> };
+      // phone / supported computers: the share sheet with the files attached (WhatsApp, mail…)
+      if (files.length && nav.canShare?.({ files }) && nav.share) {
+        await nav.share({ files, ...(links ? { text: links } : {}) }).catch(() => {});
+        return;
       }
-      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
-      if (nav.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) { await nav.share({ text }).catch(() => {}); return; }
-      await navigator.clipboard.writeText(text).catch(() => {});
-      setSharedText(text);
+      if (!files.length && links && nav.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        await nav.share({ text: links }).catch(() => {});
+        return;
+      }
+      // otherwise: download the files (then attach them in WhatsApp / mail); links are copied
+      for (const f of files) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(f); a.download = f.name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      }
+      if (links) await navigator.clipboard.writeText(links).catch(() => {});
+      setSharedText(links || " ");
       setTimeout(() => setSharedText(null), 20000);
-    } catch (e) { setMsg(err(e)); }
+    } catch (e) { setMsg(err(e)); } finally { setSharing(false); }
   }
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -191,7 +208,7 @@ export default function Resources() {
       {picked.length > 0 && (
         <div className="pick-bar card" data-testid="pick-bar">
           <b>{picked.length} ✓</b>
-          <button className="btn primary" onClick={shareSelected} data-testid="share-selected">{x.shareSelected}</button>
+          <button className="btn primary" onClick={shareSelected} disabled={sharing} data-testid="share-selected">{sharing ? "…" : x.shareSelected}</button>
           <button className="btn small" onClick={() => setPicked((data ?? []).map((r) => r.id))}>{x.selectAll}</button>
           <button className="btn small ghost" onClick={() => setPicked([])}>{x.clear}</button>
         </div>

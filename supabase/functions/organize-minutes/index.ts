@@ -63,49 +63,53 @@ Reply with ONLY this JSON (no other text):
 }
 
 // ---------- providers ----------
-// tried in order; a busy or missing model falls through to the next one
-const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"];
-const AI_TIMEOUT_MS = 110_000; // stay under the Edge Function time limit
-let workingModel: string | null = null; // remembered while this function instance is warm
+// Several free Gemini models are asked AT THE SAME TIME; the first good answer wins
+// and the others are cancelled. A busy, missing or slow model no longer blocks.
+const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.5-flash"];
+const AI_TIMEOUT_MS = 100_000; // stay under the Edge Function time limit
 
-async function geminiCall(model: string, system: string, user: string, thinking: boolean) {
-  const generationConfig: Record<string, unknown> = { responseMimeType: "application/json" };
-  if (thinking) generationConfig.thinkingConfig = { thinkingLevel: "low" }; // faster answers on models that "think"
-  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+async function geminiOnce(model: string, system: string, user: string, signal: AbortSignal): Promise<{ text: string; model: string }> {
+  const call = (thinking: boolean) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
-    signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+    signal,
     headers: { "Content-Type": "application/json", "x-goog-api-key": Deno.env.get("GEMINI_API_KEY")! },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: user }] }],
-      generationConfig,
+      generationConfig: thinking
+        ? { responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "low" } }
+        : { responseMimeType: "application/json" },
     }),
   });
+  let res = await call(true);
+  if (res.status === 400) {
+    const err = await res.text();
+    if (!/thinking/i.test(err)) throw new Error(`${model}: 400 ${err.slice(0, 200)}`);
+    res = await call(false);
+  }
+  if (!res.ok) throw new Error(`${model}: ${res.status} ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
+  if (!text) throw new Error(`${model}: empty answer`);
+  return { text, model };
 }
 
-async function askGemini(system: string, user: string): Promise<{ text: string; model: string }> {
+async function askGemini(system: string, user: string, timeoutMs = AI_TIMEOUT_MS): Promise<{ text: string; model: string }> {
   const fixed = Deno.env.get("GEMINI_MODEL");
-  const models = fixed ? [fixed] : workingModel ? [workingModel, ...GEMINI_MODELS.filter((m) => m !== workingModel)] : GEMINI_MODELS;
-  const errors: string[] = [];
-  for (const model of models) {
-    let res = await geminiCall(model, system, user, true);
-    if (res.status === 400) {
-      const err = await res.text();
-      if (!/thinking/i.test(err)) throw new Error(`gemini 400: ${err.slice(0, 300)}`);
-      res = await geminiCall(model, system, user, false); // model without thinking settings
-    }
-    if (res.status === 404) { errors.push(`${model}: not found`); continue; }
-    // busy / rate-limited / temporary error → try the next model right away instead of failing
-    if (res.status === 429 || res.status >= 500) { errors.push(`${model}: ${res.status}`); await res.body?.cancel(); continue; }
-    const data = await res.json();
-    if (!res.ok) throw new Error(`gemini ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
-    const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
-    if (!text) throw new Error(`gemini returned no text: ${JSON.stringify(data).slice(0, 300)}`);
-    workingModel = model;
-    if (errors.length) console.warn("gemini fallbacks:", errors.join("; "));
-    return { text, model };
+  const models = fixed ? [fixed] : GEMINI_MODELS;
+  const controllers = models.map(() => new AbortController());
+  const timer = setTimeout(() => controllers.forEach((c) => c.abort(new DOMException("timeout", "TimeoutError"))), timeoutMs);
+  try {
+    const winner = await Promise.any(models.map((m, i) => geminiOnce(m, system, user, controllers[i].signal)));
+    controllers.forEach((c) => c.abort()); // stop the slower ones
+    return winner;
+  } catch (e) {
+    const errors = e instanceof AggregateError ? e.errors.map(String) : [String(e)];
+    if (errors.every((x) => /timeout|abort/i.test(x))) throw new DOMException("timeout", "TimeoutError");
+    throw new Error(errors.join(" | "));
+  } finally {
+    clearTimeout(timer);
   }
-  throw new Error(errors.join("; ") || "no gemini model available");
 }
 
 async function askClaude(system: string, user: string): Promise<{ text: string; model: string }> {
@@ -171,7 +175,7 @@ Deno.serve(async (req) => {
       const t0 = Date.now();
       try {
         const sys = 'Reply with exactly this JSON: {"ok":true}';
-        const r = mode === "gemini" ? await askGemini(sys, "ping") : await askClaude(sys, "ping");
+        const r = mode === "gemini" ? await askGemini(sys, "ping", 30_000) : await askClaude(sys, "ping");
         return reply({ mode, model: r.model, ms: Date.now() - t0, answer: r.text.slice(0, 100) });
       } catch (e) {
         return reply({ mode, ms: Date.now() - t0, error: String(e).slice(0, 400) }, 502);
