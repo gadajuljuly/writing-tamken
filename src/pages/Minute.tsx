@@ -179,7 +179,6 @@ export default function MinutePage() {
           <Link to={`/${comp}/minutes`} className="muted small">← {t.minutesTitle}</Link>
           <h2>{m.title || m.meeting_date || `#${m.id}`}</h2>
           <div className="task-meta">
-            {m.status === "approved" && <span className="badge approved">{t.approved}</span>}
             {m.source_file_path && <SourceFile path={m.source_file_path} name={m.source_file_name ?? "file"} />}
           </div>
         </div>
