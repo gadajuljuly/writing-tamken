@@ -17,7 +17,7 @@ export default function Choose() {
 
   const tiles: { comp: Comp; title: string; sub: string; lang: string }[] = [
     { comp: "ar", title: DICT.ar.competition, sub: "", lang: "ar" },
-    { comp: "he", title: DICT.he.competition, sub: "مسابقة الكتابة", lang: "he" },
+    { comp: "he", title: DICT.he.competition, sub: "", lang: "he" },
   ];
 
   return (
