@@ -125,6 +125,44 @@ function Extras({ task }: { task: Task }) {
   );
 }
 
+/** 📎 next to the task: pick files/images and attach them right away. */
+function QuickAttach({ task }: { task: Task }) {
+  const { t, err } = useComp();
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  async function upload(files: FileList | null) {
+    setBusy(true);
+    for (const f of Array.from(files ?? [])) {
+      try { await addFileItem(task, f); } catch (e) { alert(err(e)); }
+    }
+    setBusy(false);
+    if (ref.current) ref.current.value = "";
+  }
+  return (
+    <>
+      <button className="icon-btn attach" title={t.addFile} aria-label={`${t.addFile}: ${task.title}`} data-testid="quick-attach"
+        onClick={() => ref.current?.click()} disabled={busy}>{busy ? "⏳" : "📎"}</button>
+      <input ref={ref} type="file" hidden multiple onChange={(e) => upload(e.target.files)} />
+    </>
+  );
+}
+
+/** Small previews of what is attached, visible without opening the task. */
+function Thumbs({ task }: { task: Task }) {
+  if (task.items.length === 0) return null;
+  return (
+    <div className="thumbs">
+      {task.items.map((i) => (
+        <span key={i.id} className={`thumb ${i.kind}`}>
+          {(i.kind === "image" || i.kind === "file") && <FileItem item={i} />}
+          {i.kind === "link" && <a href={i.url} target="_blank" rel="noopener noreferrer">🔗 {i.label || i.url}</a>}
+          {i.kind === "suggestion" && <span>💡 {i.body}</span>}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function TaskRow({ task, onEdit, onDelete }: { task: Task; onEdit: () => void; onDelete: (t: Task) => void }) {
   const { comp, t } = useComp();
   const [open, setOpen] = useState(false);
@@ -137,6 +175,7 @@ export function TaskRow({ task, onEdit, onDelete }: { task: Task; onEdit: () => 
         <div className="task-body">
           <div className="task-head">
             <button className="task-title" onClick={() => setOpen(!open)} aria-expanded={open}>{task.title}</button>
+            <QuickAttach task={task} />
             <button className="icon-btn trash" title={t.delete} aria-label={`${t.delete}: ${task.title}`} data-testid="delete-task"
               onClick={() => onDelete(task)}>🗑</button>
           </div>
@@ -145,6 +184,7 @@ export function TaskRow({ task, onEdit, onDelete }: { task: Task; onEdit: () => 
             {task.proposal_approved && <span className="badge approved">✓ {t.proposalApproved}</span>}
             {task.items.length > 0 && <span className="muted small">📎 {task.items.length}</span>}
           </div>
+          {!open && <Thumbs task={task} />}
           {open && (
             <div className="task-details">
               {task.description && <p className="desc">{task.description}</p>}

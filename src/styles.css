@@ -234,3 +234,15 @@ textarea { resize: vertical; }
 .minute-date { font-weight: 700; color: var(--navy-soft); min-width: 110px; }
 .task.done .task-title, .task .task-title { color: var(--navy); }
 .resource .resource-icon { font-size: 1.2rem; } .resource .trash { margin-inline-start: auto; } .resources-page { display: grid; gap: 14px; }
+
+/* attachments visible on the task */
+.task-head { gap: 4px; }
+.task-head .task-title { margin-inline-end: auto; }
+.icon-btn.attach { font-size: 1rem; padding: 2px 6px; border-radius: 8px; opacity: .7; }
+.icon-btn.attach:hover { opacity: 1; background: var(--bg-soft); }
+.thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.thumb { display: inline-flex; align-items: center; max-width: 220px; font-size: .85rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.thumb.image { padding: 0; border-radius: 8px; }
+.thumb.image img { height: 56px; width: auto; display: block; border-radius: 8px; }
+.thumb a { overflow: hidden; text-overflow: ellipsis; }
+.thumbs { align-items: flex-start; }
