@@ -245,7 +245,6 @@ export default function MinutePage() {
           <div className="task-meta">
             <span className={`badge ${m.status}`}>{m.status === "approved" ? `${t.approved} · ${t.version} ${m.current_version}` : t.draft}</span>
             {m.has_pending_changes && m.status === "approved" && <span className="badge pending">{t.pending}</span>}
-            {m.archived && <span className="badge">{t.archived}</span>}
             {m.source_file_path && <SourceFile path={m.source_file_path} name={m.source_file_name ?? "file"} />}
           </div>
         </div>
