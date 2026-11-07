@@ -43,6 +43,7 @@ function Notes({ task }: { task: Task }) {
   }
   return (
     <div className="notes">
+      <span className="notes-label">{t.notes}</span>
       <textarea value={v} placeholder={t.notesPh} aria-label={t.notes} rows={2}
         onFocus={() => (editing.current = true)} onChange={(e) => setV(e.target.value)} onBlur={save} />
       {state === "saved" && <span className="saved-hint">{t.saved}</span>}
