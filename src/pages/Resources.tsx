@@ -9,6 +9,7 @@ const TXT = {
     empty: "لا توجد مواد بعد", confirmDelete: "حذف هذه المادة؟", notReady: "قسم المواد المساعدة يحتاج تحديث قاعدة البيانات (ملف schema.sql).",
     uploading: "جارٍ الرفع…", rename: "تغيير الاسم", ok: "حفظ", cancel: "إلغاء",
     share: "مشاركة", copied: "نُسخ الرابط. يمكنك لصقه في أي رسالة", whatsapp: "إرسال عبر WhatsApp",
+    select: "اختيار", shareSelected: "📤 مشاركة المختار", selectAll: "اختيار الكل", clear: "إلغاء الاختيار", copiedMany: "نُسخت الروابط. يمكنك لصقها في أي رسالة",
   },
   he: {
     intro: "קבצים וקישורים שימושיים לכל חברי הוועדה: נושאי כתיבה, מחוון, תבניות תעודות, פוסטרים…",
@@ -16,6 +17,7 @@ const TXT = {
     empty: "אין עדיין חומרים", confirmDelete: "למחוק את החומר?", notReady: "חלק חומרי העזר דורש עדכון של בסיס הנתונים (קובץ schema.sql).",
     uploading: "מעלה…", rename: "שינוי שם", ok: "שמירה", cancel: "ביטול",
     share: "שיתוף", copied: "הקישור הועתק. אפשר להדביק אותו בכל הודעה", whatsapp: "שליחה ב-WhatsApp",
+    select: "בחירה", shareSelected: "📤 שיתוף הנבחרים", selectAll: "בחירת הכול", clear: "ניקוי הבחירה", copiedMany: "הקישורים הועתקו. אפשר להדביק אותם בכל הודעה",
   },
 };
 
@@ -53,7 +55,7 @@ function ShareButton({ r, onError }: { r: Resource; onError: (e: unknown) => voi
 
 type Drag = { onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDrop: () => void; onDragEnd: () => void; over: boolean; dragging: boolean };
 
-function Item({ r, onDelete, onError, drag }: { r: Resource; onDelete: () => void; onError: (e: unknown) => void; drag: Drag }) {
+function Item({ r, onDelete, onError, drag, checked, onCheck }: { r: Resource; onDelete: () => void; onError: (e: unknown) => void; drag: Drag; checked: boolean; onCheck: (v: boolean) => void }) {
   const { comp } = useComp();
   const x = TXT[comp];
   const [url, setUrl] = useState<string | null>(r.kind === "link" ? r.url : null);
@@ -79,6 +81,7 @@ function Item({ r, onDelete, onError, drag }: { r: Resource; onDelete: () => voi
     <li className={`resource ${drag.over ? "drop-here" : ""} ${drag.dragging ? "dragging" : ""}`} data-testid="resource"
       draggable={!editing} onDragStart={drag.onDragStart} onDragOver={drag.onDragOver} onDrop={drag.onDrop} onDragEnd={drag.onDragEnd}>
       <span className="drag-handle" title="⇅" aria-hidden>⋮⋮</span>
+      <input type="checkbox" className="pick" checked={checked} onChange={(e) => onCheck(e.target.checked)} aria-label={`${x.select}: ${r.title}`} data-testid="pick" />
       <span className="resource-icon">{r.kind === "link" ? "🔗" : isImage ? "🖼" : "📄"}</span>
       <span className="res-name">{editing ? (
         <form className="rename" onSubmit={saveName}>
@@ -109,6 +112,21 @@ export default function Resources() {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [msg, setMsg] = useState("");
+  // ✓ several materials, then share all their links in one message
+  const [picked, setPicked] = useState<number[]>([]);
+  const [sharedText, setSharedText] = useState<string | null>(null);
+  async function shareSelected() {
+    try {
+      const chosen = (data ?? []).filter((r) => picked.includes(r.id));
+      const lines = await Promise.all(chosen.map(async (r) => `${r.title}\n${await shareUrl(r)}`));
+      const text = lines.join("\n\n");
+      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+      if (nav.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) { await nav.share({ text }).catch(() => {}); return; }
+      await navigator.clipboard.writeText(text).catch(() => {});
+      setSharedText(text);
+      setTimeout(() => setSharedText(null), 20000);
+    } catch (e) { setMsg(err(e)); }
+  }
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -162,6 +180,21 @@ export default function Resources() {
       <p className="muted">{x.intro}</p>
       {msg && <p className="error" role="alert">{msg}</p>}
 
+      {picked.length > 0 && (
+        <div className="pick-bar card" data-testid="pick-bar">
+          <b>{picked.length} ✓</b>
+          <button className="btn primary" onClick={shareSelected} data-testid="share-selected">{x.shareSelected}</button>
+          <button className="btn small" onClick={() => setPicked((data ?? []).map((r) => r.id))}>{x.selectAll}</button>
+          <button className="btn small ghost" onClick={() => setPicked([])}>{x.clear}</button>
+        </div>
+      )}
+      {sharedText && (
+        <div className="toast" role="status" data-testid="share-many-toast">
+          <span>{x.copiedMany}</span>
+          <a className="btn small" href={`https://wa.me/?text=${encodeURIComponent(sharedText)}`} target="_blank" rel="noreferrer">{x.whatsapp}</a>
+          <button className="icon-btn" onClick={() => setSharedText(null)} aria-label="close">✕</button>
+        </div>
+      )}
       {linkForm && (
         <form className="card form" onSubmit={saveLink}>
           <label>{x.name}<input value={title} onChange={(e) => setTitle(e.target.value)} required /></label>
@@ -176,6 +209,7 @@ export default function Resources() {
         <ul className="list">
           {list.map((r) => (
             <Item key={r.id} r={r} onError={(e) => setMsg(err(e))}
+              checked={picked.includes(r.id)} onCheck={(v) => setPicked((p) => (v ? [...p, r.id] : p.filter((id) => id !== r.id)))}
               drag={{
                 onDragStart: () => setDragId(r.id),
                 onDragOver: (e) => { e.preventDefault(); if (overId !== r.id) setOverId(r.id); },

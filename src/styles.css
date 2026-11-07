@@ -296,3 +296,7 @@ textarea { resize: vertical; }
 .icon-btn.share:hover { opacity: 1; background: var(--bg-soft); }
 .toast a.btn { color: var(--navy); text-decoration: none; }
 .toast .icon-btn { color: #fff; }
+/* select several materials and share them together */
+.list li.resource { grid-template-columns: 18px 22px 28px minmax(0, 1fr) 32px 130px 32px; }
+.resource .pick { width: 18px; height: 18px; margin: 0; cursor: pointer; }
+.pick-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; position: sticky; top: 8px; z-index: 5; border-color: var(--accent-strong); background: var(--bg-soft); }
