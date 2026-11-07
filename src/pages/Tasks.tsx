@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AXES } from "@/lib/i18n";
-import { titleKey } from "@/lib/dedupe";
 import { useComp, useData } from "@/components/ui";
 import { TaskRow } from "@/components/TaskRow";
 import { TaskForm } from "@/components/TaskForm";
@@ -9,15 +8,7 @@ import { deleteTask, listDeletedTasks, listTasks, purgeTask, restoreTask, type T
 export default function TasksPage() {
   const { comp, t, err } = useComp();
   const { data: tasks } = useData(() => listTasks(comp), [comp]);
-  const [qText, setQ] = useState("");
   const [form, setForm] = useState<{ task?: Task; axis?: number } | null>(null);
-
-  const filtered = useMemo(() => {
-    const k = titleKey(qText);
-    return (tasks ?? []).filter((x) =>
-      !k || titleKey(`${x.title} ${x.description} ${x.notes} ${x.assignees.join(" ")}`).includes(k));
-  }, [tasks, qText]);
-  const filtering = !!qText;
 
   // delete → task disappears at once, an "undo" bar shows for 10 s; deleted tasks stay in the bin below
   const [hidden, setHidden] = useState<number[]>([]);
@@ -42,14 +33,9 @@ export default function TasksPage() {
 
   return (
     <div className="tasks-page">
-      <div className="filters card">
-        <input type="search" placeholder={t.search} value={qText} onChange={(e) => setQ(e.target.value)} aria-label={t.search} />
-      </div>
-
       {!tasks && <p className="muted">…</p>}
       {tasks && AXES[comp].map((a) => {
-        const list = filtered.filter((x) => x.axis === a.id && !hidden.includes(x.id));
-        if (filtering && list.length === 0) return null;
+        const list = tasks.filter((x) => x.axis === a.id && !hidden.includes(x.id));
         return (
           <section key={a.id} className="axis card" data-testid={`axis-${a.id}`}>
             <header className="axis-head">
