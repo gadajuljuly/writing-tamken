@@ -243,7 +243,7 @@ export default function MinutePage() {
           <Link to={`/${comp}/minutes`} className="muted small">← {t.minutesTitle}</Link>
           <h2>{m.title || m.meeting_date || `#${m.id}`}</h2>
           <div className="task-meta">
-            <span className={`badge ${m.status}`}>{m.status === "approved" ? `${t.approved} · ${t.version} ${m.current_version}` : t.draft}</span>
+            {m.status === "approved" && <span className="badge approved">{`${t.approved} · ${t.version} ${m.current_version}`}</span>}
             {m.has_pending_changes && m.status === "approved" && <span className="badge pending">{t.pending}</span>}
             {m.source_file_path && <SourceFile path={m.source_file_path} name={m.source_file_name ?? "file"} />}
           </div>

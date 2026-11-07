@@ -72,7 +72,7 @@ export default function MinutesPage() {
             <li key={m.id}>
               <span className="minute-date">{m.meeting_date ? fmtDate(m.meeting_date, comp) : fmtDate(m.created_at, comp)}</span>
               <Link to={`/${comp}/minutes/${m.id}`} className="strong">{m.title || m.meeting_date || `#${m.id}`}</Link>
-              <span className={`badge ${m.status}`}>{m.status === "approved" ? `${t.approved} · ${t.version} ${m.current_version}` : t.draft}</span>
+              {m.status === "approved" && <span className="badge approved">{`${t.approved} · ${t.version} ${m.current_version}`}</span>}
               {m.has_pending_changes && m.status === "approved" && <span className="badge pending">{t.pending}</span>}
             </li>
           ))}

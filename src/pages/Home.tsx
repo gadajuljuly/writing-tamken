@@ -35,7 +35,7 @@ export default function Home() {
             {data.minutes.map((m) => (
               <li key={m.id}>
                 <Link to={`/${comp}/minutes/${m.id}`}>{m.title || m.meeting_date || `#${m.id}`}</Link>
-                <span className={`badge ${m.status}`}>{m.status === "approved" ? t.approved : t.draft}</span>
+                {m.status === "approved" && <span className="badge approved">{t.approved}</span>}
                 <span className="muted small">{m.meeting_date || fmtDate(m.created_at, comp)}</span>
               </li>
             ))}
