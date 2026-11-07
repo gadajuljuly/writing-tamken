@@ -42,7 +42,7 @@ function Item({ r, onDelete, onError }: { r: Resource; onDelete: () => void; onE
   return (
     <li className="resource" data-testid="resource">
       <span className="resource-icon">{r.kind === "link" ? "🔗" : isImage ? "🖼" : "📄"}</span>
-      {editing ? (
+      <span className="res-name">{editing ? (
         <form className="rename" onSubmit={saveName}>
           <input value={name} onChange={(e) => setName(e.target.value)} autoFocus aria-label={x.rename}
             onKeyDown={(e) => e.key === "Escape" && setEditing(false)} />
@@ -54,8 +54,8 @@ function Item({ r, onDelete, onError }: { r: Resource; onDelete: () => void; onE
           {url ? <a href={url} target="_blank" rel="noopener noreferrer" className="strong">{r.title}</a> : <span className="strong">{r.title}</span>}
           <button className="icon-btn" title={x.rename} aria-label={`${x.rename}: ${r.title}`} data-testid="rename" onClick={() => setEditing(true)}>✏️</button>
         </>
-      )}
-      <span className="muted small">{fmtDate(r.created_at, comp)}</span>
+      )}</span>
+      <span className="muted small res-date">{fmtDate(r.created_at, comp)}</span>
       <button className="icon-btn trash" aria-label="delete" onClick={onDelete}>🗑</button>
     </li>
   );

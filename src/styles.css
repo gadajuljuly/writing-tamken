@@ -279,3 +279,9 @@ textarea { resize: vertical; }
   .tl-when { margin-top: 0; }
 }
 .timeline { padding-top: 12px; } .timeline::before { top: 27px; } @media (max-width: 760px) { .timeline { padding-top: 0; } .timeline::before { top: 10px; } }
+/* materials list: name on the right, dates in one aligned column on the left */
+.list li.resource { display: grid; grid-template-columns: 28px minmax(0, 1fr) 130px 32px; align-items: center; gap: 10px; }
+.res-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.res-name > a, .res-name > span { overflow: hidden; text-overflow: ellipsis; }
+.list li.resource .res-date { margin: 0; text-align: end; white-space: nowrap; }
+.resource .trash { margin: 0; }
