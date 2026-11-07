@@ -233,3 +233,4 @@ textarea { resize: vertical; }
 .site-header { border-bottom: 3px solid var(--accent-strong); }
 .minute-date { font-weight: 700; color: var(--navy-soft); min-width: 110px; }
 .task.done .task-title, .task .task-title { color: var(--navy); }
+.resource .resource-icon { font-size: 1.2rem; } .resource .trash { margin-inline-start: auto; } .resources-page { display: grid; gap: 14px; }

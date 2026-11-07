@@ -587,3 +587,33 @@ begin
     end loop;
   end if;
 end $$;
+
+-- =====================================================================
+-- Helpful materials (مواد مساعدة): shared files and links per competition
+-- =====================================================================
+create table if not exists public.wt_resources (
+  id serial primary key,
+  competition text not null check (competition in ('ar','he')),
+  title text not null check (trim(title) <> ''),
+  kind text not null check (kind in ('file','link')),
+  url text not null default '',
+  file_path text,
+  mime text,
+  created_at timestamptz not null default now(),
+  check (kind <> 'link' or url ~* '^https?://')
+);
+create index if not exists wt_resources_comp_idx on public.wt_resources (competition, created_at desc);
+alter table public.wt_resources enable row level security;
+revoke all on public.wt_resources from anon, authenticated;
+grant select, insert, delete on public.wt_resources to authenticated;
+grant usage, select on sequence public.wt_resources_id_seq to authenticated;
+drop policy if exists wt_read on public.wt_resources;   create policy wt_read on public.wt_resources for select to authenticated using (wt_is_member());
+drop policy if exists wt_insert on public.wt_resources; create policy wt_insert on public.wt_resources for insert to authenticated with check (wt_is_member());
+drop policy if exists wt_delete on public.wt_resources; create policy wt_delete on public.wt_resources for delete to authenticated using (wt_is_member());
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'wt_resources') then
+    alter publication supabase_realtime add table public.wt_resources;
+  end if;
+end $$;

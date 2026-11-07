@@ -11,6 +11,7 @@ import Tasks from "@/pages/Tasks";
 import Minutes from "@/pages/Minutes";
 import Minute from "@/pages/Minute";
 import Choose from "@/pages/Choose";
+import Resources from "@/pages/Resources";
 
 function CompLayout({ me }: { me: Me }) {
   const { comp = "" } = useParams();
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="tasks" element={<Tasks />} />
           <Route path="minutes" element={<Minutes />} />
           <Route path="minutes/:id" element={<Minute />} />
+          <Route path="resources" element={<Resources />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -190,3 +190,15 @@ test("delete goes to the recycle bin; undo restores; duplicates checked on resto
   const actions = (await rows(U.ghada, "select action from wt_audit where entity = 'task' and entity_id in ($1, $2) order by id", [t.id, t2.id])).map((r) => r.action);
   assert.deepEqual(actions.filter((a) => a !== "item_added"), ["created", "deleted", "created", "purged", "restored"]);
 });
+
+test("helpful materials: members add links/files per competition; only http(s) links", async () => {
+  await rows(U.rana, "insert into wt_resources (competition, title, kind, url) values ('ar', 'مئشار التقييم', 'link', 'https://example.com/rubric')");
+  await rows(U.rana, "insert into wt_resources (competition, title, kind, file_path, mime) values ('ar', 'بوستر', 'file', 'ar/resources/x.pdf', 'application/pdf')");
+  await fails(rows(U.rana, "insert into wt_resources (competition, title, kind, url) values ('ar', 'x', 'link', 'javascript:alert(1)')"), /check constraint/);
+  await fails(rows(U.stranger, "insert into wt_resources (competition, title, kind, url) values ('ar', 'x', 'link', 'https://a.b')"), /row-level security/);
+  assert.equal((await rows(U.ghada, "select * from wt_resources where competition = 'ar'")).length, 2);
+  assert.equal((await rows(U.ghada, "select * from wt_resources where competition = 'he'")).length, 0);
+  assert.equal((await rows(U.stranger, "select * from wt_resources")).length, 0);
+  await rows(U.ghada, "delete from wt_resources where title = 'بوستر'");
+  assert.equal((await rows(U.ghada, "select * from wt_resources")).length, 1);
+});

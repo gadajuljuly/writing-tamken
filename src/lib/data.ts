@@ -145,6 +145,23 @@ export async function fileUrl(path: string, download?: string) {
   return data.signedUrl;
 }
 
+// ---------- helpful materials ----------
+export type Resource = { id: number; competition: Comp; title: string; kind: "file" | "link"; url: string; file_path: string | null; mime: string | null; created_at: string };
+export const listResources = (comp: Comp) =>
+  read<Resource[]>(supabase.from("wt_resources").select("*").eq("competition", comp).order("created_at", { ascending: false }) as any);
+export async function addResourceFile(comp: Comp, title: string, file: File) {
+  const path = await uploadFile(`${comp}/resources`, file);
+  return must(supabase.from("wt_resources").insert({ competition: comp, title: title.trim() || file.name, kind: "file", file_path: path, mime: file.type }) as any);
+}
+export function addResourceLink(comp: Comp, title: string, url: string) {
+  if (!/^https?:\/\//i.test(url.trim())) throw new ApiError("bad_url");
+  return must(supabase.from("wt_resources").insert({ competition: comp, title: title.trim() || url.trim(), kind: "link", url: url.trim() }) as any);
+}
+export async function deleteResource(r: Resource) {
+  await must(supabase.from("wt_resources").delete().eq("id", r.id) as any);
+  if (r.file_path) await supabase.storage.from("wt-files").remove([r.file_path]);
+}
+
 // ---------- members ----------
 export const listMembers = (comp: Comp) =>
   read<{ id: number; name: string }[]>(supabase.from("wt_members").select("id, name").eq("competition", comp).order("id") as any);
