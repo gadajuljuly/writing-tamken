@@ -14,8 +14,9 @@ type Minute = MinuteData & { isUploader: boolean };
 const LIST_FIELDS = ["participants", "topics", "discussions", "decisions", "notes"] as const;
 const toLines = (a: string[]) => a.join("\n");
 const fromLines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
-const tasksToLines = (a: MinuteContent["tasks"]) => a.map((x) => (x.owners.length ? `${x.task} | ${x.owners.join("، ")}` : x.task)).join("\n");
-const linesToTasks = (s: string) => fromLines(s).map((l) => {
+/** Proposed tasks are shown as bullet points: "• task | owners" */
+const tasksToLines = (a: MinuteContent["tasks"]) => a.map((x) => `• ${x.owners.length ? `${x.task} | ${x.owners.join("، ")}` : x.task}`).join("\n");
+const linesToTasks = (s: string) => fromLines(s).map((l) => l.replace(/^[•●\-*–]\s*/, "")).filter(Boolean).map((l) => {
   const [task, owners = ""] = l.split("|");
   return { task: task.trim(), owners: owners.split(/[،,]/).map((o) => o.trim()).filter(Boolean) };
 });
