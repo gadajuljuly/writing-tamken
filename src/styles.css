@@ -369,3 +369,10 @@ textarea { resize: vertical; }
   .choose-tile.card { min-height: 190px; padding: 28px 24px 24px 46px; }
 }
 .nowrap { white-space: nowrap; }
+
+/* header: clear "competition" button + back */
+.brand-group { display: flex; align-items: center; gap: 10px; }
+.brand-home { font-size: 1.05rem; font-weight: 700; color: var(--navy); border: 2px solid var(--accent-strong); background: var(--accent); padding: 5px 16px; }
+.brand:hover .brand-home { background: var(--accent-strong); border-color: var(--accent-strong); }
+.back-btn { font: inherit; font-size: 1rem; font-weight: 600; color: var(--navy); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; cursor: pointer; }
+.back-btn:hover { border-color: var(--accent-strong); }

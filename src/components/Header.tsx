@@ -34,7 +34,10 @@ export function Header({ comp }: { comp: Comp }) {
   return (
     <header className="site-header">
       <div className="topbar">
-        <Link to="/" className="brand" title={t.allCompetitions} data-testid="to-start"><Logo /><span className="brand-home">⌂ {t.allCompetitions}</span></Link>
+        <div className="brand-group">
+          <Link to="/" className="brand" title={t.allCompetitions} data-testid="to-start"><Logo /><span className="brand-home">⌂ {t.allCompetitions}</span></Link>
+          <button className="back-btn" data-testid="back" onClick={() => (history.length > 1 ? navigate(-1) : navigate("/"))}>→ {t.back}</button>
+        </div>
         <div className="topbar-end">
           <UndoButton he={comp === "he"} />
           <button className="lang-btn" onClick={() => navigate(target)} data-testid="lang-toggle">{t.switchTo}</button>
