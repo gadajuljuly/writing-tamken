@@ -39,8 +39,8 @@ export default function Choose() {
         {tiles.map((x) => (
           <Link key={x.comp} to={`/${x.comp}`} className="choose-tile card" data-testid={`choose-${x.comp}`} lang={x.lang}>
             <span className="book-spine" aria-hidden="true" />
-            <span className="choose-title">{x.comp === "ar" && x.title.includes("تمكين")
-              ? <>{x.title.slice(0, x.title.indexOf("تمكين")).trim()}<br /><span className="nowrap">{x.title.slice(x.title.indexOf("تمكين"))}</span></>
+            <span className="choose-title">{x.comp === "ar"
+              ? <>مسابقة الكتابة<br /><span className="nowrap">تمكين – قلم</span></>
               : x.title}</span>
             {x.sub && <span className="choose-sub">{x.sub}</span>}
             {pct[x.comp] !== undefined && (
