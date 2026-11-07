@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { STATUSES } from "@/lib/i18n";
-import { addFileItem, addLinkItem, addSuggestionItem, deleteItem, fileUrl, renameItem, updateTask, type Task, type TaskItem } from "@/lib/data";
+import { addFileItem, addLinkItem, addSuggestionItem, deleteItem, fileUrl, viewUrl, renameItem, updateTask, type Task, type TaskItem } from "@/lib/data";
 import { fmtDate, useComp } from "./ui";
 
 type Status = Task["status"];
@@ -56,7 +56,7 @@ function FileItem({ item }: { item: TaskItem }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
-    if (item.file_path) fileUrl(item.file_path).then((u) => alive && setUrl(u)).catch(() => {});
+    if (item.file_path) viewUrl(item.file_path).then((u) => alive && setUrl(u)).catch(() => {});
     return () => { alive = false; };
   }, [item.file_path]);
   if (item.kind === "image") return url ? <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={item.label} /></a> : <span>🖼 {item.label}</span>;

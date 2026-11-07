@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addResourceFile, addResourceLink, deleteResource, fileUrl, listResources, renameResource, type Resource } from "@/lib/data";
+import { addResourceFile, addResourceLink, deleteResource, fileUrl, viewUrl, listResources, renameResource, type Resource } from "@/lib/data";
 import { fmtDate, useComp, useData } from "@/components/ui";
 
 const TXT = {
@@ -25,7 +25,7 @@ function Item({ r, onDelete, onError }: { r: Resource; onDelete: () => void; onE
   const [name, setName] = useState(r.title);
   useEffect(() => {
     let alive = true;
-    if (r.kind === "file" && r.file_path) fileUrl(r.file_path).then((u) => alive && setUrl(u)).catch(() => {});
+    if (r.kind === "file" && r.file_path) viewUrl(r.file_path).then((u) => alive && setUrl(u)).catch(() => {});
     return () => { alive = false; };
   }, [r.file_path, r.kind]);
   useEffect(() => { if (!editing) setName(r.title); }, [r.title, editing]);

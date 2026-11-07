@@ -161,6 +161,16 @@ export async function deleteItem(item: TaskItem & { task_id?: number }, taskId?:
   }) as any));
 }
 
+/**
+ * Link that OPENS a file in the browser instead of downloading it.
+ * PDF, images, video and text open directly; Word / Excel / PowerPoint open in
+ * Microsoft's free online viewer (it reads the file through the short-lived link).
+ */
+export async function viewUrl(path: string) {
+  const url = await fileUrl(path);
+  return /\.(docx?|xlsx?|pptx?)$/i.test(path) ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}` : url;
+}
+
 /** Short-lived signed link to a private file (only signed-in members can get one). */
 export async function fileUrl(path: string, download?: string) {
   const { data, error } = await supabase.storage.from("wt-files").createSignedUrl(path, 3600, download ? { download } : undefined);

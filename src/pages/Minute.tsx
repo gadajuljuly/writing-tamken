@@ -4,7 +4,7 @@ import { AXES } from "@/lib/i18n";
 import { buildPrompt, parseAnswer } from "@/lib/aiPrompt";
 import { emptyMinute, type MinuteContent } from "@/lib/minute";
 import { fmtDate, useComp, useData } from "@/components/ui";
-import { addSuggestion, aiMode, applySuggestions, approveMinute, fileUrl, getMinute, organizeMinute, restoreVersion, saveDraft,
+import { addSuggestion, aiMode, applySuggestions, approveMinute, viewUrl, getMinute, organizeMinute, restoreVersion, saveDraft,
   setAiResult, setSuggestionState, updateSuggestion, listMembers, listTasks, ApiError, type Minute as MinuteData } from "@/lib/data";
 
 type Minute = MinuteData & { isUploader: boolean };
@@ -212,7 +212,7 @@ function FreeAi({ m }: { m: Minute }) {
 
 function SourceFile({ path, name }: { path: string; name: string }) {
   const { t } = useComp();
-  const open = async () => window.open(await fileUrl(path, name), "_blank", "noopener");
+  const open = async () => window.open(await viewUrl(path), "_blank", "noopener");
   return <button className="link-btn small" onClick={open}>📎 {t.original}: {name}</button>;
 }
 
