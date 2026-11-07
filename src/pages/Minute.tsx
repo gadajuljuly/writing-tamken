@@ -14,15 +14,18 @@ type Minute = MinuteData & { isUploader: boolean };
 const LIST_FIELDS = ["participants", "topics", "discussions", "decisions", "notes"] as const;
 const toLines = (a: string[]) => a.join("\n");
 const fromLines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
-/** Proposed tasks are shown as bullet points: "• task | owners" */
-const tasksToLines = (a: MinuteContent["tasks"]) => a.map((x) => `• ${x.owners.length ? `${x.task} | ${x.owners.join("، ")}` : x.task}`).join("\n");
-const linesToTasks = (s: string) => fromLines(s).map((l) => l.replace(/^[•●\-*–]\s*/, "")).filter(Boolean).map((l) => {
+/** Proposed tasks as bullet points; ✅ marks a task that is already in the task list. */
+const tasksToLines = (a: MinuteContent["tasks"], inList: Set<string> = new Set()) =>
+  a.map((x) => `${inList.has(titleKey(x.task)) ? "✅" : "•"} ${x.owners.length ? `${x.task} | ${x.owners.join("، ")}` : x.task}`).join("\n");
+const linesToTasks = (s: string) => fromLines(s).map((l) => l.replace(/^(✅|✔️|✔|•|●|-|\*|–)\s*/u, "")).filter(Boolean).map((l) => {
   const [task, owners = ""] = l.split("|");
   return { task: task.trim(), owners: owners.split(/[،,]/).map((o) => o.trim()).filter(Boolean) };
 });
 
 function Editor({ m }: { m: Minute }) {
-  const { t, err } = useComp();
+  const { t, err, comp } = useComp();
+  const { data: allTasks } = useData(() => listTasks(comp), [comp]);
+  const inList = new Set((allTasks ?? []).map((x) => titleKey(x.title)));
   const base = () => m.draft ?? emptyMinute(m.title, m.meeting_date);
   const [d, setD] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
@@ -31,9 +34,9 @@ function Editor({ m }: { m: Minute }) {
     const b = base();
     const proposed = m.suggestions.filter((s) => s.state === "pending").map((s) => ({ task: s.title, owners: s.assignees }));
     setD({ title: b.title, date: b.date, ...Object.fromEntries(LIST_FIELDS.map((f) => [f, toLines(b[f])])),
-      tasks: tasksToLines(b.tasks.length ? b.tasks : proposed) });
+      tasks: tasksToLines(b.tasks.length ? b.tasks : proposed, inList) });
   };
-  useEffect(() => { if (!dirty) fill(); /* eslint-disable-next-line */ }, [JSON.stringify(m.draft), JSON.stringify(m.suggestions), dirty]);
+  useEffect(() => { if (!dirty) fill(); /* eslint-disable-next-line */ }, [JSON.stringify(m.draft), JSON.stringify(m.suggestions), inList.size, dirty]);
 
   const content = (): MinuteContent => ({
     title: d.title ?? "", date: d.date ?? "",
