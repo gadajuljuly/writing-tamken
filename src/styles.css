@@ -232,3 +232,4 @@ textarea { resize: vertical; }
 .btn.primary:hover { background: #0a5ea3; }
 .site-header { border-bottom: 3px solid var(--accent-strong); }
 .minute-date { font-weight: 700; color: var(--navy-soft); min-width: 110px; }
+.task.done .task-title, .task .task-title { color: var(--navy); }
