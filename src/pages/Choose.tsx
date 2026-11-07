@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { DICT, type Comp } from "@/lib/i18n";
 import { progress } from "@/lib/dedupe";
-import { signOut, summary } from "@/lib/data";
+import { signOut, summary, type Me } from "@/lib/data";
 import { Logo } from "@/components/Header";
 
 /** Start screen: two big tiles, one per competition. */
-export default function Choose() {
+export default function Choose({ me }: { me: Me }) {
   const [pct, setPct] = useState<Partial<Record<Comp, number>>>({});
   useEffect(() => {
     document.documentElement.lang = "ar";
@@ -25,6 +25,7 @@ export default function Choose() {
         <div className="topbar">
           <div className="brand"><Logo /></div>
           <div className="topbar-end">
+            {me.role === "admin" && <Link to="/admin" className="btn small" data-testid="to-admin">👥 إدارة الأعضاء</Link>}
             <button className="link-btn" onClick={() => signOut()}>{DICT.ar.logout}</button>
             <span className="owner-name">{DICT.ar.owner}</span>
           </div>

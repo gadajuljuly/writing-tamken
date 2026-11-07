@@ -206,3 +206,4 @@ textarea { resize: vertical; }
   background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(27,42,74,.3); max-width: calc(100% - 24px); }
 .toast .btn { background: var(--accent); color: var(--navy); border-color: var(--accent); }
 .bin .list li .small.muted { margin-inline-start: 0; }
+.admin .list li.inactive { opacity: .6; } .admin .list li b { min-width: 120px; }

@@ -29,28 +29,62 @@ before(async () => {
   await pg.exec(`
     create role anon nologin; create role authenticated nologin;
     create schema auth;
-    create table auth.users (id uuid primary key);
+    create table auth.users (id uuid primary key, email text);
     create function auth.uid() returns uuid language sql stable as
       $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth to authenticated, anon;
     grant usage on schema public to authenticated, anon;
   `);
   await pg.exec(fs.readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8"));
-  await pg.exec(`update wt_settings set value = 'qalam' where key = 'signup_code'`);
-  for (const id of Object.values(U)) await pg.query("insert into auth.users values ($1)", [id]);
+  await pg.query("insert into auth.users values ($1, 'ghada@example.com'), ($2, '972501111111@phone.writing-tamken.app'), ($3, '972502222222@phone.writing-tamken.app')", [U.ghada, U.rana, U.stranger]);
+  // Ghada was already a member before invites existed; re-running the schema makes the first member admin
+  await pg.query("insert into wt_profiles (id, name) values ($1, 'غادة جلجولي')", [U.ghada]);
   // run twice: the script must be idempotent
   await pg.exec(fs.readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8"));
 });
 
-test("joining needs the committee code; non-members see nothing", async () => {
-  await fails(rows(U.ghada, "select wt_join('wrong', 'غادة جلجولي')"), /bad_code/);
-  await rows(U.ghada, "select wt_join('qalam', 'غادة جلجولي')");
-  await rows(U.rana, "select wt_join('qalam', 'رنا مروات')");
+test("controlled access: only the admin invites; only the invited phone can join", async () => {
+  const [g] = await rows(U.ghada, "select role from wt_profiles where id = $1", [U.ghada]);
+  assert.equal(g.role, "admin");
+  // the old shared code no longer works
+  await fails(rows(U.stranger, "select wt_join('anything', 'x')"), /invite_only/);
+  // non-members see nothing and cannot invite
   assert.equal((await rows(U.stranger, "select * from wt_members")).length, 0);
-  assert.equal((await rows(U.ghada, "select * from wt_members where competition = 'ar'")).length, 8);
+  await fails(rows(U.stranger, "select wt_invite_create('0502222222', 'x')"), /only_admin/);
   await fails(rows(U.stranger, "insert into wt_tasks (competition, title) values ('ar', 'x')"), /row-level security/);
-  // settings (signup code) are not readable
+
+  const [inv] = await rows(U.ghada, "select * from wt_invite_create('050-111-1111', 'رنا مروات')");
+  assert.equal(inv.phone, "972501111111");
+  // inviting the same phone again returns the same open invite
+  const [again] = await rows(U.ghada, "select * from wt_invite_create('+972 50 111 1111', '')");
+  assert.equal(again.token, inv.token);
+  // anyone with the link sees who it is for
+  const info = await as(U.stranger, async (tx) => (await tx.query("select * from wt_invite_info($1)", [inv.token])).rows);
+  assert.deepEqual(info, [{ name: "رنا مروات", phone: "972501111111" }]);
+  // a different phone cannot use Rana's link
+  await fails(rows(U.stranger, "select wt_join_invite($1, 'x')", [inv.token]), /bad_invite/);
+  await rows(U.rana, "select wt_join_invite($1, 'رنا مروات')", [inv.token]);
+  assert.equal((await rows(U.ghada, "select * from wt_members where competition = 'ar'")).length, 8);
+  assert.equal((await rows(U.rana, "select * from wt_members where competition = 'ar'")).length, 8);
+  // the link is used up
+  await fails(rows(U.rana, "select wt_join_invite($1, 'x')", [inv.token]), /bad_invite/);
+  // members cannot see invites; the admin can
+  assert.equal((await rows(U.rana, "select * from wt_invites")).length, 0);
+  assert.equal((await rows(U.ghada, "select * from wt_invites")).length, 1);
+  // settings are not readable
   await fails(rows(U.ghada, "select * from wt_settings"), /permission denied/);
+});
+
+test("admin can remove and restore a member's access", async () => {
+  await fails(rows(U.rana, "select wt_member_set_active($1, false)", [U.ghada]), /only_admin/);
+  await rows(U.ghada, "select wt_member_set_active($1, false)", [U.rana]);
+  assert.equal((await rows(U.rana, "select * from wt_members")).length, 0);
+  await rows(U.ghada, "select wt_member_set_active($1, true)", [U.rana]);
+  assert.equal((await rows(U.rana, "select * from wt_members where competition = 'ar'")).length, 8);
+  // revoked invites cannot be used
+  const [inv] = await rows(U.ghada, "select * from wt_invite_create('0502222222', 'زائر')");
+  await rows(U.ghada, "select wt_invite_revoke($1)", [inv.id]);
+  await fails(rows(U.stranger, "select wt_join_invite($1, 'x')", [inv.token]), /bad_invite/);
 });
 
 test("tasks: completion date, duplicates (spelling variants), separate competitions", async () => {
