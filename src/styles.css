@@ -252,3 +252,5 @@ textarea { resize: vertical; }
 .thumb-del { font-size: .8rem; padding: 0 4px; opacity: .55; flex: none; }
 .thumb-del:hover { opacity: 1; }
 .thumb.image .thumb-del { position: absolute; top: 2px; inset-inline-end: 2px; background: #fffc; border-radius: 6px; }
+.undo-btn { background: var(--accent); border-color: var(--accent-strong); color: var(--navy); font-weight: 700; }
+.undo-btn:disabled { opacity: .45; cursor: default; }

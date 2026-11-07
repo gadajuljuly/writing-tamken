@@ -17,13 +17,15 @@ export default function TasksPage() {
   const { data: bin = [] } = useData(() => listDeletedTasks(comp), [comp]);
   const [binOpen, setBinOpen] = useState(false);
   useEffect(() => () => window.clearTimeout(undoTimer.current), []);
+  // once the server list no longer has a hidden task, forget it (so "↩" at the top can bring it back)
+  useEffect(() => { if (tasks) setHidden((h) => h.filter((id) => tasks.some((x) => x.id === id))); }, [tasks]);
 
   async function remove(task: Task) {
     setHidden((h) => [...h, task.id]);
     setUndo(task);
     window.clearTimeout(undoTimer.current);
     undoTimer.current = window.setTimeout(() => setUndo(null), 10000);
-    try { await deleteTask(task.id); }
+    try { await deleteTask(task.id, task.title); }
     catch (e) { setHidden((h) => h.filter((x) => x !== task.id)); setUndo(null); alert(err(e)); }
   }
   async function restore(id: number) {

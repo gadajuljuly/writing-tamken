@@ -3,6 +3,7 @@
  * (row level security + functions in supabase/schema.sql), not in this file.
  */
 import { supabase } from "./supabase";
+import { pushUndo } from "./undo";
 import type { Comp } from "./i18n";
 import { emptyMinute, normalizeMinute, type MinuteContent } from "./minute";
 
@@ -96,13 +97,29 @@ export const listTasks = (comp: Comp) =>
 
 export type TaskInput = Partial<Pick<Task, "title" | "description" | "axis" | "assignees" | "status" | "notes" | "proposal_approved" | "decision_minute_id">>;
 
-export const createTask = (comp: Comp, t: TaskInput) =>
-  must<{ id: number }>(supabase.from("wt_tasks").insert({ ...t, competition: comp }).select("id").single() as any);
+export async function createTask(comp: Comp, t: TaskInput) {
+  const row = await must<{ id: number }>(supabase.from("wt_tasks").insert({ ...t, competition: comp }).select("id").single() as any);
+  pushUndo(`«${t.title ?? ""}»`, () => setDeleted(row.id, true));
+  return row;
+}
 
-export const updateTask = (id: number, t: TaskInput) => must(supabase.from("wt_tasks").update(t).eq("id", id) as any);
+/** Changes a task. With `before` (the old values) the change can be undone with "↩". */
+export async function updateTask(id: number, t: TaskInput, before?: Task) {
+  const res = await must(supabase.from("wt_tasks").update(t).eq("id", id) as any);
+  if (before) {
+    const old = Object.fromEntries(Object.keys(t).map((k) => [k, (before as any)[k]])) as TaskInput;
+    pushUndo(`«${before.title}»`, () => must(supabase.from("wt_tasks").update(old).eq("id", id) as any));
+  }
+  return res;
+}
+const setDeleted = (id: number, deleted: boolean) =>
+  must(supabase.from("wt_tasks").update({ deleted_at: deleted ? new Date().toISOString() : null }).eq("id", id) as any);
 /** Deleting moves the task to the recycle bin; it can be restored (undo) or removed for good. */
-export const deleteTask = (id: number) => must(supabase.from("wt_tasks").update({ deleted_at: new Date().toISOString() }).eq("id", id) as any);
-export const restoreTask = (id: number) => must(supabase.from("wt_tasks").update({ deleted_at: null }).eq("id", id) as any);
+export async function deleteTask(id: number, title = "") {
+  await setDeleted(id, true);
+  pushUndo(`«${title}»`, () => setDeleted(id, false));
+}
+export const restoreTask = (id: number) => setDeleted(id, false);
 export const purgeTask = (id: number) => must(supabase.from("wt_tasks").delete().eq("id", id) as any);
 export const listDeletedTasks = (comp: Comp) =>
   read<{ id: number; title: string; axis: number; deleted_at: string }[]>(supabase.from("wt_tasks").select("id, title, axis, deleted_at")
@@ -135,9 +152,13 @@ export const addLinkItem = (taskId: number, url: string, label: string) => {
 };
 export const addSuggestionItem = (taskId: number, body: string) =>
   must(supabase.from("wt_task_items").insert({ task_id: taskId, kind: "suggestion", body }) as any);
-export async function deleteItem(item: TaskItem) {
+/** The stored file is kept so that "↩" can bring the attachment back. */
+export async function deleteItem(item: TaskItem & { task_id?: number }, taskId?: number) {
   await must(supabase.from("wt_task_items").delete().eq("id", item.id) as any);
-  if (item.file_path) await supabase.storage.from("wt-files").remove([item.file_path]);
+  const tid = taskId ?? item.task_id;
+  if (tid) pushUndo(`«${item.label || item.url || item.body}»`, () => must(supabase.from("wt_task_items").insert({
+    task_id: tid, kind: item.kind, label: item.label, url: item.url, body: item.body, file_path: item.file_path, mime: item.mime,
+  }) as any));
 }
 
 /** Short-lived signed link to a private file (only signed-in members can get one). */
@@ -159,13 +180,20 @@ export function addResourceLink(comp: Comp, title: string, url: string) {
   if (!/^https?:\/\//i.test(url.trim())) throw new ApiError("bad_url");
   return must(supabase.from("wt_resources").insert({ competition: comp, title: title.trim() || url.trim(), kind: "link", url: url.trim() }) as any);
 }
-export const renameResource = (id: number, title: string) =>
-  must(supabase.from("wt_resources").update({ title: title.trim() }).eq("id", id) as any);
-export const renameItem = (id: number, label: string) =>
-  must(supabase.from("wt_task_items").update({ label: label.trim() }).eq("id", id) as any);
+export async function renameResource(id: number, title: string, old?: string) {
+  await must(supabase.from("wt_resources").update({ title: title.trim() }).eq("id", id) as any);
+  if (old) pushUndo(`«${old}»`, () => must(supabase.from("wt_resources").update({ title: old }).eq("id", id) as any));
+}
+export async function renameItem(id: number, label: string, old?: string) {
+  await must(supabase.from("wt_task_items").update({ label: label.trim() }).eq("id", id) as any);
+  if (old !== undefined) pushUndo(`«${old}»`, () => must(supabase.from("wt_task_items").update({ label: old }).eq("id", id) as any));
+}
+/** The stored file is kept so that "↩" can bring the material back. */
 export async function deleteResource(r: Resource) {
   await must(supabase.from("wt_resources").delete().eq("id", r.id) as any);
-  if (r.file_path) await supabase.storage.from("wt-files").remove([r.file_path]);
+  pushUndo(`«${r.title}»`, () => must(supabase.from("wt_resources").insert({
+    competition: r.competition, title: r.title, kind: r.kind, url: r.url, file_path: r.file_path, mime: r.mime,
+  }) as any));
 }
 
 // ---------- members ----------

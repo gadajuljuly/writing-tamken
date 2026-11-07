@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { DICT, type Comp } from "@/lib/i18n";
 import { signOut } from "@/lib/data";
+import { UndoButton } from "./UndoButton";
 
 /** Shows public/logo.png (or logo.svg) when the file exists. */
 export function Logo() {
@@ -35,6 +36,7 @@ export function Header({ comp }: { comp: Comp }) {
       <div className="topbar">
         <Link to="/" className="brand" title={t.allCompetitions} data-testid="to-start"><Logo /><span className="brand-home">⌂ {t.allCompetitions}</span></Link>
         <div className="topbar-end">
+          <UndoButton he={comp === "he"} />
           <button className="lang-btn" onClick={() => navigate(target)} data-testid="lang-toggle">{t.switchTo}</button>
           <button className="link-btn" onClick={async () => { await signOut(); navigate("/login"); }}>{t.logout}</button>
           <span className="owner-name">{t.owner}</span>

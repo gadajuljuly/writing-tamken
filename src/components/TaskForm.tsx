@@ -26,7 +26,7 @@ export function TaskForm({ task, axis, onClose }: { task?: Task; axis?: number; 
     try {
       const { decision_text, ...fields } = f;
       let id = task?.id;
-      if (task) await updateTask(task.id, fields);
+      if (task) await updateTask(task.id, fields, task);
       else id = (await createTask(comp, fields)).id;
       const decisionChanged = !task || !task.proposal_approved || task.decision_minute_id !== f.decision_minute_id || !!decision_text.trim();
       if (f.proposal_approved && f.decision_minute_id && decisionChanged) await documentDecision(id!, f.decision_minute_id, decision_text);

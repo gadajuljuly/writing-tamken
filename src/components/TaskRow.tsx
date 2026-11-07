@@ -13,7 +13,7 @@ export function StatusControl({ task, status, onChange }: { task: Task; status: 
     if (s === status) return;
     const before = status;
     onChange(s); // optimistic
-    try { await updateTask(task.id, { status: s }); }
+    try { await updateTask(task.id, { status: s }, { ...task, status: before }); }
     catch (e) { onChange(before); alert(err(e)); }
   }
   return (
@@ -37,7 +37,7 @@ function Notes({ task }: { task: Task }) {
   async function save() {
     editing.current = false;
     if (v === task.notes) return;
-    await updateTask(task.id, { notes: v });
+    await updateTask(task.id, { notes: v }, task);
     setState("saved");
     setTimeout(() => setState(""), 1500);
   }
@@ -99,10 +99,10 @@ function Extras({ task }: { task: Task }) {
               {i.kind !== "suggestion" && (
                 <button className="icon-btn small" title="✏️" aria-label={`rename ${i.label}`} onClick={() => {
                   const n = prompt("", i.label || i.url);
-                  if (n && n.trim() && n.trim() !== i.label) renameItem(i.id, n).catch((e) => setMsg(err(e)));
+                  if (n && n.trim() && n.trim() !== i.label) renameItem(i.id, n, i.label).catch((e) => setMsg(err(e)));
                 }}>✏️</button>
               )}
-              <button className="icon-btn small" aria-label={t.delete} onClick={() => deleteItem(i)}>✕</button>
+              <button className="icon-btn small" aria-label={t.delete} onClick={() => deleteItem(i, task.id)}>✕</button>
             </li>
           ))}
         </ul>
@@ -165,7 +165,7 @@ function Thumbs({ task }: { task: Task }) {
           {i.kind === "link" && <a href={i.url} target="_blank" rel="noopener noreferrer">🔗 {i.label || i.url}</a>}
           {i.kind === "suggestion" && <span>💡 {i.body}</span>}
           <button className="icon-btn thumb-del" title={t.delete} aria-label={`${t.delete}: ${i.label || i.url || i.body}`} data-testid="delete-item"
-            onClick={() => confirm(`${t.delete}: «${i.label || i.url || i.body}»؟`) && deleteItem(i).catch((e) => alert(err(e)))}>🗑</button>
+            onClick={() => confirm(`${t.delete}: «${i.label || i.url || i.body}»؟`) && deleteItem(i, task.id).catch((e) => alert(err(e)))}>🗑</button>
         </span>
       ))}
     </div>

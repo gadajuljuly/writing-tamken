@@ -33,7 +33,7 @@ function Item({ r, onDelete, onError }: { r: Resource; onDelete: () => void; onE
   async function saveName(e?: React.FormEvent) {
     e?.preventDefault();
     if (name.trim() && name.trim() !== r.title) {
-      try { await renameResource(r.id, name); } catch (ex) { onError(ex); }
+      try { await renameResource(r.id, name, r.title); } catch (ex) { onError(ex); }
     }
     setEditing(false);
   }
