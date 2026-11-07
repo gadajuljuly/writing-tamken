@@ -221,3 +221,13 @@ textarea { resize: vertical; }
 /* same starting point for every notes box */
 .task { grid-template-columns: 360px 1fr; }
 @media (max-width: 760px) { .task { grid-template-columns: 1fr; } }
+
+/* brand colours from the Center's presentation: dark blue + yellow (not navy) */
+:root {
+  --navy: #004e8a;        /* dark blue (logo) */
+  --navy-soft: #2d74b5;   /* blue (frame) */
+  --accent: #fff0bf;      /* light yellow */
+  --accent-strong: #ffc20e; /* logo yellow */
+}
+.btn.primary:hover { background: #0a5ea3; }
+.site-header { border-bottom: 3px solid var(--accent-strong); }
