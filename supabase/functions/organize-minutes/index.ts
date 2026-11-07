@@ -59,7 +59,8 @@ Reply with ONLY this JSON (no other text):
 }
 
 // ---------- providers ----------
-const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
+// tried in order; a busy or missing model falls through to the next one
+const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"];
 const AI_TIMEOUT_MS = 110_000; // stay under the Edge Function time limit
 let workingModel: string | null = null; // remembered while this function instance is warm
 
@@ -90,11 +91,14 @@ async function askGemini(system: string, user: string): Promise<{ text: string; 
       res = await geminiCall(model, system, user, false); // model without thinking settings
     }
     if (res.status === 404) { errors.push(`${model}: not found`); continue; }
+    // busy / rate-limited / temporary error → try the next model right away instead of failing
+    if (res.status === 429 || res.status >= 500) { errors.push(`${model}: ${res.status}`); await res.body?.cancel(); continue; }
     const data = await res.json();
     if (!res.ok) throw new Error(`gemini ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
     const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
     if (!text) throw new Error(`gemini returned no text: ${JSON.stringify(data).slice(0, 300)}`);
     workingModel = model;
+    if (errors.length) console.warn("gemini fallbacks:", errors.join("; "));
     return { text, model };
   }
   throw new Error(errors.join("; ") || "no gemini model available");
