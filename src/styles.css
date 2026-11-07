@@ -368,3 +368,4 @@ textarea { resize: vertical; }
   .book-hero { transform: scale(.85); height: 150px; }
   .choose-tile.card { min-height: 190px; padding: 28px 24px 24px 46px; }
 }
+.nowrap { white-space: nowrap; }
