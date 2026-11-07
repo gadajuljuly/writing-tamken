@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useComp, useData, fmtDate } from "@/components/ui";
 import { summary } from "@/lib/data";
 import { progress } from "@/lib/dedupe";
+import { Timeline } from "@/components/Timeline";
 
 export default function Home() {
   const { comp, t } = useComp();
@@ -12,6 +13,7 @@ export default function Home() {
 
   return (
     <div className="home">
+      {comp === "ar" && <Timeline />}
       <section className="card progress-card">
         <div className="ring" style={{ ["--p" as string]: percent }} data-testid="overall-percent" aria-label={`${percent}%`}>
           <span>{percent}%</span>
