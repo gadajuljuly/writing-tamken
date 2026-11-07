@@ -120,7 +120,7 @@ function Suggestions({ m }: { m: Minute }) {
       <h3>{t.suggested}</h3>
       <p className="muted small">{t.suggestedHint}</p>
       <ul className="suggestions">
-        {m.suggestions.map((s) => (
+        {m.suggestions.filter((s) => s.state !== "added" && s.state !== "rejected").map((s) => (
           <li key={s.id} className={`sugg ${s.state}`} data-testid="suggestion" data-state={s.state}>
             {s.state === "pending" ? (
               <input type="checkbox" checked={sel.includes(s.id)} aria-label={s.title}
