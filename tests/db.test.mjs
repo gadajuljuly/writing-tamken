@@ -214,3 +214,13 @@ test("files and links can be renamed after upload (name only)", async () => {
   const [it2] = await rows(U.ghada, "update wt_task_items set label = 'رابط المتجر' where id = $1 returning label", [it.id]);
   assert.equal(it2.label, "رابط المتجر");
 });
+
+test("materials can be put in any order (drag & drop)", async () => {
+  const ids = (await rows(U.ghada, "select id from wt_resources where competition = 'ar' order by id")).map((r) => r.id);
+  const [{ id: extra }] = await rows(U.ghada, "insert into wt_resources (competition, title, kind, url) values ('ar', 'ثالث', 'link', 'https://example.com/3') returning id");
+  const order = [extra, ...ids].reverse();
+  await rows(U.rana, "select wt_resources_reorder($1)", [order]);
+  const got = (await rows(U.ghada, "select id from wt_resources where competition = 'ar' order by position")).map((r) => r.id);
+  assert.deepEqual(got, order);
+  await fails(rows(U.stranger, "select wt_resources_reorder($1)", [order]), /unauthorized/);
+});

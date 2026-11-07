@@ -633,3 +633,17 @@ begin
     update storage.buckets set file_size_limit = 52428800 where id = 'wt-files';
   end if;
 end $$;
+
+-- =====================================================================
+-- Materials order (drag & drop): position column + reorder function
+-- =====================================================================
+alter table public.wt_resources add column if not exists position integer;
+create or replace function public.wt_resources_reorder(p_ids integer[]) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not wt_is_member() then raise exception 'unauthorized'; end if;
+  update wt_resources r set position = x.ord
+  from unnest(p_ids) with ordinality as x(id, ord) where r.id = x.id;
+end $$;
+revoke all on function public.wt_resources_reorder(integer[]) from public, anon;
+grant execute on function public.wt_resources_reorder(integer[]) to authenticated;

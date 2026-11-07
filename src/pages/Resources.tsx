@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addResourceFile, addResourceLink, deleteResource, fileUrl, viewUrl, listResources, renameResource, type Resource } from "@/lib/data";
+import { addResourceFile, addResourceLink, deleteResource, reorderResources, fileUrl, viewUrl, listResources, renameResource, type Resource } from "@/lib/data";
 import { fmtDate, useComp, useData } from "@/components/ui";
 
 const TXT = {
@@ -17,7 +17,9 @@ const TXT = {
   },
 };
 
-function Item({ r, onDelete, onError }: { r: Resource; onDelete: () => void; onError: (e: unknown) => void }) {
+type Drag = { onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDrop: () => void; onDragEnd: () => void; over: boolean; dragging: boolean };
+
+function Item({ r, onDelete, onError, drag }: { r: Resource; onDelete: () => void; onError: (e: unknown) => void; drag: Drag }) {
   const { comp } = useComp();
   const x = TXT[comp];
   const [url, setUrl] = useState<string | null>(r.kind === "link" ? r.url : null);
@@ -40,7 +42,9 @@ function Item({ r, onDelete, onError }: { r: Resource; onDelete: () => void; onE
 
   const isImage = r.kind === "file" && /^image\/(png|jpe?g|gif|webp|avif)$/.test(r.mime ?? "");
   return (
-    <li className="resource" data-testid="resource">
+    <li className={`resource ${drag.over ? "drop-here" : ""} ${drag.dragging ? "dragging" : ""}`} data-testid="resource"
+      draggable={!editing} onDragStart={drag.onDragStart} onDragOver={drag.onDragOver} onDrop={drag.onDrop} onDragEnd={drag.onDragEnd}>
+      <span className="drag-handle" title="⇅" aria-hidden>⋮⋮</span>
       <span className="resource-icon">{r.kind === "link" ? "🔗" : isImage ? "🖼" : "📄"}</span>
       <span className="res-name">{editing ? (
         <form className="rename" onSubmit={saveName}>
@@ -72,6 +76,24 @@ export default function Resources() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // drag & drop: take a title with the mouse and drop it before another one
+  const [order, setOrder] = useState<Resource[] | null>(null);
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [overId, setOverId] = useState<number | null>(null);
+  useEffect(() => setOrder(null), [data]); // fresh data from the server replaces the local order
+  const list = order ?? data ?? [];
+  async function drop(targetId: number) {
+    if (dragId === null || dragId === targetId || !data) return;
+    const before = list.map((r) => r.id);
+    const moved = list.filter((r) => r.id !== dragId);
+    const from = before.indexOf(dragId), to = before.indexOf(targetId);
+    const idx = moved.findIndex((r) => r.id === targetId) + (from < to ? 1 : 0);
+    moved.splice(idx, 0, list.find((r) => r.id === dragId)!);
+    setOrder(moved);
+    setDragId(null); setOverId(null);
+    try { await reorderResources(moved.map((r) => r.id), before); } catch (ex) { setOrder(null); setMsg(err(ex)); }
+  }
 
   // choosing files uploads them right away (the name is the file name; it can be renamed later with ✏️)
   async function upload(files: FileList | null) {
@@ -117,8 +139,15 @@ export default function Resources() {
         {error && <p className="error">{x.notReady}</p>}
         {data && data.length === 0 && <p className="muted">{x.empty}</p>}
         <ul className="list">
-          {data?.map((r) => (
+          {list.map((r) => (
             <Item key={r.id} r={r} onError={(e) => setMsg(err(e))}
+              drag={{
+                onDragStart: () => setDragId(r.id),
+                onDragOver: (e) => { e.preventDefault(); if (overId !== r.id) setOverId(r.id); },
+                onDrop: () => drop(r.id),
+                onDragEnd: () => { setDragId(null); setOverId(null); },
+                over: overId === r.id && dragId !== r.id, dragging: dragId === r.id,
+              }}
               onDelete={() => confirm(x.confirmDelete) && deleteResource(r).catch((e) => setMsg(err(e)))} />
           ))}
         </ul>

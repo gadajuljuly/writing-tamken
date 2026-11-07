@@ -179,9 +179,16 @@ export async function fileUrl(path: string, download?: string) {
 }
 
 // ---------- helpful materials ----------
-export type Resource = { id: number; competition: Comp; title: string; kind: "file" | "link"; url: string; file_path: string | null; mime: string | null; created_at: string };
-export const listResources = (comp: Comp) =>
-  read<Resource[]>(supabase.from("wt_resources").select("*").eq("competition", comp).order("created_at", { ascending: false }) as any);
+export type Resource = { id: number; competition: Comp; title: string; kind: "file" | "link"; url: string; file_path: string | null; mime: string | null; created_at: string; position?: number | null };
+/** Ordered as arranged by drag & drop; new items (no position yet) come first, newest first. */
+export async function listResources(comp: Comp) {
+  const rows = await read<Resource[]>(supabase.from("wt_resources").select("*").eq("competition", comp).order("created_at", { ascending: false }) as any);
+  return [...rows].sort((a, b) => (a.position ?? -1) - (b.position ?? -1));
+}
+export async function reorderResources(ids: number[], before?: number[]) {
+  await must(supabase.rpc("wt_resources_reorder", { p_ids: ids }) as any);
+  if (before) pushUndo("↕", () => must(supabase.rpc("wt_resources_reorder", { p_ids: before }) as any));
+}
 export async function addResourceFile(comp: Comp, title: string, file: File) {
   const path = await uploadFile(`${comp}/resources`, file);
   return must(supabase.from("wt_resources").insert({ competition: comp, title: title.trim() || baseName(file.name), kind: "file", file_path: path, mime: file.type }) as any);
