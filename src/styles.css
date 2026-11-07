@@ -212,3 +212,4 @@ textarea { resize: vertical; }
 .notes { display: grid; gap: 4px; }
 .notes-label { font-weight: 700; color: var(--navy); font-size: .9rem; }
 .notes textarea { width: 100%; }
+.toast.update { bottom: auto; top: 14px; }
