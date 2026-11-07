@@ -82,7 +82,7 @@ function Editor({ m }: { m: Minute }) {
         <label>{t.meetingDate}<input value={d.date ?? ""} onChange={set("date")} name="m-date" /></label>
       </div>
       {LIST_FIELDS.slice(0, 4).map((f) => (
-        <label key={f}>{label[f]} <span className="muted small">({t.onePerLine})</span>
+        <label key={f}>{label[f]}
           <textarea rows={f === "discussions" ? 6 : 3} value={d[f] ?? ""} onChange={set(f)} name={`m-${f}`} />
         </label>
       ))}
