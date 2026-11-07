@@ -39,7 +39,10 @@ export function TaskForm({ task, axis, onClose }: { task?: Task; axis?: number; 
   return (
     <Modal title={task ? t.editTask : `${t.newTask}: ${AXES[comp].find((a) => a.id === f.axis)?.title ?? ""}`} onClose={onClose}>
       <form className="form" onSubmit={save}>
-        <label>{t.title}<input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required autoFocus name="title" /></label>
+        <label>{task ? t.title : t.taskName}<input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required autoFocus name="title" /></label>
+        {/* Adding a task asks only for its name; everything else is set later with "Edit". */}
+        {task && (
+          <>
         <label>{t.description}<textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} name="description" /></label>
         <div className="row-2">
           {/* A new task belongs to the axis whose "+" was pressed; the axis is only changeable when editing. */}
@@ -78,10 +81,12 @@ export function TaskForm({ task, axis, onClose }: { task?: Task; axis?: number; 
             </>
           )}
         </fieldset>
+          </>
+        )}
         {error && <p className="error" role="alert">{error}</p>}
         <div className="actions">
           <button className="btn primary" disabled={busy}>{t.save}</button>
-          <button type="button" className="btn ghost" onClick={onClose}>{t.cancel}</button>
+          {task && <button type="button" className="btn ghost" onClick={onClose}>{t.cancel}</button>}
         </div>
       </form>
     </Modal>
