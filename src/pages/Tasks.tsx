@@ -3,7 +3,7 @@ import { AXES } from "@/lib/i18n";
 import { useComp, useData } from "@/components/ui";
 import { TaskRow } from "@/components/TaskRow";
 import { TaskForm } from "@/components/TaskForm";
-import { deleteTask, listDeletedTasks, listTasks, purgeTask, restoreTask, type Task } from "@/lib/data";
+import { deleteTask, listTasks, restoreTask, type Task } from "@/lib/data";
 
 export default function TasksPage() {
   const { comp, t, err } = useComp();
@@ -14,8 +14,6 @@ export default function TasksPage() {
   const [hidden, setHidden] = useState<number[]>([]);
   const [undo, setUndo] = useState<Task | null>(null);
   const undoTimer = useRef<number | undefined>(undefined);
-  const { data: bin = [] } = useData(() => listDeletedTasks(comp), [comp]);
-  const [binOpen, setBinOpen] = useState(false);
   useEffect(() => () => window.clearTimeout(undoTimer.current), []);
   // once the server list no longer has a hidden task, forget it (so "↩" at the top can bring it back)
   useEffect(() => { if (tasks) setHidden((h) => h.filter((id) => tasks.some((x) => x.id === id))); }, [tasks]);
@@ -56,23 +54,6 @@ export default function TasksPage() {
           </section>
         );
       })}
-      {bin.length > 0 && (
-        <section className="card bin" data-testid="bin">
-          <button className="link-btn" onClick={() => setBinOpen(!binOpen)} aria-expanded={binOpen}>🗑 {t.deletedTasks} ({bin.length})</button>
-          {binOpen && (
-            <ul className="list">
-              {bin.map((x) => (
-                <li key={x.id}>
-                  <span>{x.title}</span>
-                  <span className="muted small">{AXES[comp].find((a) => a.id === x.axis)?.title}</span>
-                  <button className="btn small" onClick={() => restore(x.id)}>{t.restoreTask}</button>
-                  <button className="btn small danger" onClick={() => confirm(t.confirmPurge) && purgeTask(x.id).catch((e) => alert(err(e)))}>{t.purge}</button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
       {undo && (
         <div className="toast" role="status" data-testid="undo-bar">
           <span>{t.taskDeleted}: «{undo.title}»</span>
