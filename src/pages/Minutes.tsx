@@ -56,9 +56,7 @@ function NewMinute({ onClose }: { onClose: () => void }) {
 
 export default function MinutesPage() {
   const { comp, t } = useComp();
-  const [qText, setQ] = useState("");
-  const [archived, setArchived] = useState(false);
-  const { data } = useData(() => listMinutes(comp, { archived, q: qText }), [comp, archived, qText]);
+  const { data } = useData(() => listMinutes(comp), [comp]);
   const [creating, setCreating] = useState(false);
 
   return (
@@ -67,19 +65,15 @@ export default function MinutesPage() {
         <h2>{t.minutesTitle}</h2>
         <button className="btn primary" onClick={() => setCreating(true)}>+ {t.newMinute}</button>
       </div>
-      <div className="filters card">
-        <input type="search" placeholder={t.search} value={qText} onChange={(e) => setQ(e.target.value)} aria-label={t.search} />
-        <label className="check"><input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} />{t.showArchived}</label>
-      </div>
       <div className="card">
         {data && data.length === 0 && <p className="muted">{t.none}</p>}
         <ul className="list minutes-list">
           {data?.map((m) => (
             <li key={m.id}>
+              <span className="minute-date">{m.meeting_date ? fmtDate(m.meeting_date, comp) : fmtDate(m.created_at, comp)}</span>
               <Link to={`/${comp}/minutes/${m.id}`} className="strong">{m.title || m.meeting_date || `#${m.id}`}</Link>
               <span className={`badge ${m.status}`}>{m.status === "approved" ? `${t.approved} · ${t.version} ${m.current_version}` : t.draft}</span>
               {m.has_pending_changes && m.status === "approved" && <span className="badge pending">{t.pending}</span>}
-              <span className="muted small">{m.meeting_date || fmtDate(m.created_at, comp)}</span>
             </li>
           ))}
         </ul>

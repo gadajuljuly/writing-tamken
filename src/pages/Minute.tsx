@@ -5,7 +5,7 @@ import { buildPrompt, parseAnswer } from "@/lib/aiPrompt";
 import { emptyMinute, type MinuteContent } from "@/lib/minute";
 import { fmtDate, useComp, useData } from "@/components/ui";
 import { addSuggestion, aiMode, applySuggestions, approveMinute, fileUrl, getMinute, organizeMinute, restoreVersion, saveDraft,
-  setAiResult, setArchived, setSuggestionState, updateSuggestion, listMembers, listTasks, ApiError, type Minute as MinuteData } from "@/lib/data";
+  setAiResult, setSuggestionState, updateSuggestion, listMembers, listTasks, ApiError, type Minute as MinuteData } from "@/lib/data";
 
 type Minute = MinuteData & { isUploader: boolean };
 
@@ -249,7 +249,6 @@ export default function MinutePage() {
             {m.source_file_path && <SourceFile path={m.source_file_path} name={m.source_file_name ?? "file"} />}
           </div>
         </div>
-        <button className="btn ghost" onClick={() => setArchived(id, !m.archived)}>{m.archived ? t.unarchive : t.archive}</button>
       </div>
 
       <section className="card ai-panel">
