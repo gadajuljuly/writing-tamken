@@ -81,7 +81,7 @@ function Editor({ m }: { m: Minute }) {
         <label>{t.meetingTitle}<input value={d.title ?? ""} onChange={set("title")} name="m-title" /></label>
         <label>{t.meetingDate}<input value={d.date ?? ""} onChange={set("date")} name="m-date" /></label>
       </div>
-      {LIST_FIELDS.slice(0, 4).map((f) => (
+      {LIST_FIELDS.slice(0, 4).filter((f) => f !== "topics").map((f) => (
         <label key={f}>{label[f]}
           <textarea rows={f === "discussions" ? 6 : 3} value={d[f] ?? ""} onChange={set(f)} name={`m-${f}`} />
         </label>
