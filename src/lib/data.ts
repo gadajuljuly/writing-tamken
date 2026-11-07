@@ -111,7 +111,9 @@ export const listDeletedTasks = (comp: Comp) =>
 export const documentDecision = (taskId: number, minuteId: number, text: string) =>
   must(supabase.rpc("wt_document_decision", { p_task: taskId, p_minute: minuteId, p_text: text }) as any);
 
-export const MAX_FILE = 10 * 1024 * 1024;
+export const MAX_FILE = 50 * 1024 * 1024; // Supabase free plan: 50 MB per file
+/** "report.docx" → "report" */
+export const baseName = (n: string) => n.replace(/\.[A-Za-z0-9]{1,8}$/, "");
 
 async function uploadFile(prefix: string, file: File): Promise<string> {
   if (file.size > MAX_FILE) throw new ApiError("file_too_large");
@@ -125,7 +127,7 @@ async function uploadFile(prefix: string, file: File): Promise<string> {
 export async function addFileItem(task: Task, file: File) {
   const path = await uploadFile(`${task.competition}/tasks/${task.id}`, file);
   const kind = /^image\/(png|jpe?g|gif|webp|avif)$/.test(file.type) ? "image" : "file";
-  return must(supabase.from("wt_task_items").insert({ task_id: task.id, kind, label: file.name, file_path: path, mime: file.type }) as any);
+  return must(supabase.from("wt_task_items").insert({ task_id: task.id, kind, label: baseName(file.name), file_path: path, mime: file.type }) as any);
 }
 export const addLinkItem = (taskId: number, url: string, label: string) => {
   if (!/^https?:\/\//i.test(url)) throw new ApiError("bad_url");
@@ -151,12 +153,16 @@ export const listResources = (comp: Comp) =>
   read<Resource[]>(supabase.from("wt_resources").select("*").eq("competition", comp).order("created_at", { ascending: false }) as any);
 export async function addResourceFile(comp: Comp, title: string, file: File) {
   const path = await uploadFile(`${comp}/resources`, file);
-  return must(supabase.from("wt_resources").insert({ competition: comp, title: title.trim() || file.name, kind: "file", file_path: path, mime: file.type }) as any);
+  return must(supabase.from("wt_resources").insert({ competition: comp, title: title.trim() || baseName(file.name), kind: "file", file_path: path, mime: file.type }) as any);
 }
 export function addResourceLink(comp: Comp, title: string, url: string) {
   if (!/^https?:\/\//i.test(url.trim())) throw new ApiError("bad_url");
   return must(supabase.from("wt_resources").insert({ competition: comp, title: title.trim() || url.trim(), kind: "link", url: url.trim() }) as any);
 }
+export const renameResource = (id: number, title: string) =>
+  must(supabase.from("wt_resources").update({ title: title.trim() }).eq("id", id) as any);
+export const renameItem = (id: number, label: string) =>
+  must(supabase.from("wt_task_items").update({ label: label.trim() }).eq("id", id) as any);
 export async function deleteResource(r: Resource) {
   await must(supabase.from("wt_resources").delete().eq("id", r.id) as any);
   if (r.file_path) await supabase.storage.from("wt-files").remove([r.file_path]);

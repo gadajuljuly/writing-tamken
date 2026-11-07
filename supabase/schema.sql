@@ -617,3 +617,19 @@ begin
     alter publication supabase_realtime add table public.wt_resources;
   end if;
 end $$;
+
+-- =====================================================================
+-- Rename uploaded files / links after upload; larger files (50 MB, free-plan max)
+-- =====================================================================
+grant update (title) on public.wt_resources to authenticated;
+drop policy if exists wt_update on public.wt_resources;
+create policy wt_update on public.wt_resources for update to authenticated using (wt_is_member()) with check (wt_is_member());
+grant update (label) on public.wt_task_items to authenticated;
+drop policy if exists wt_update on public.wt_task_items;
+create policy wt_update on public.wt_task_items for update to authenticated using (wt_is_member()) with check (wt_is_member());
+do $$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'storage') then
+    update storage.buckets set file_size_limit = 52428800 where id = 'wt-files';
+  end if;
+end $$;

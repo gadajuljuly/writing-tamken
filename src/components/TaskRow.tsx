@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { STATUSES } from "@/lib/i18n";
-import { addFileItem, addLinkItem, addSuggestionItem, deleteItem, fileUrl, updateTask, type Task, type TaskItem } from "@/lib/data";
+import { addFileItem, addLinkItem, addSuggestionItem, deleteItem, fileUrl, renameItem, updateTask, type Task, type TaskItem } from "@/lib/data";
 import { fmtDate, useComp } from "./ui";
 
 type Status = Task["status"];
@@ -96,6 +96,12 @@ function Extras({ task }: { task: Task }) {
               {(i.kind === "image" || i.kind === "file") && <FileItem item={i} />}
               {i.kind === "link" && <a href={i.url} target="_blank" rel="noopener noreferrer">🔗 {i.label || i.url}</a>}
               {i.kind === "suggestion" && <span>💡 {i.body}</span>}
+              {i.kind !== "suggestion" && (
+                <button className="icon-btn small" title="✏️" aria-label={`rename ${i.label}`} onClick={() => {
+                  const n = prompt("", i.label || i.url);
+                  if (n && n.trim() && n.trim() !== i.label) renameItem(i.id, n).catch((e) => setMsg(err(e)));
+                }}>✏️</button>
+              )}
               <button className="icon-btn small" aria-label={t.delete} onClick={() => deleteItem(i)}>✕</button>
             </li>
           ))}

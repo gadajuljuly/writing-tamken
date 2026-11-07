@@ -246,3 +246,4 @@ textarea { resize: vertical; }
 .thumb.image img { height: 56px; width: auto; display: block; border-radius: 8px; }
 .thumb a { overflow: hidden; text-overflow: ellipsis; }
 .thumbs { align-items: flex-start; }
+.rename { display: flex; gap: 6px; flex: 1; } .rename input { flex: 1; }

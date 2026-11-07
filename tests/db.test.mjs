@@ -202,3 +202,15 @@ test("helpful materials: members add links/files per competition; only http(s) l
   await rows(U.ghada, "delete from wt_resources where title = 'بوستر'");
   assert.equal((await rows(U.ghada, "select * from wt_resources")).length, 1);
 });
+
+test("files and links can be renamed after upload (name only)", async () => {
+  await rows(U.rana, "insert into wt_resources (competition, title, kind, url) values ('ar', 'اسم قديم', 'link', 'https://example.com/x')");
+  const [r] = await rows(U.ghada, "update wt_resources set title = 'اسم جديد' where title = 'اسم قديم' returning title");
+  assert.equal(r.title, "اسم جديد");
+  await fails(rows(U.ghada, "update wt_resources set url = 'https://evil.example' where title = 'اسم جديد'"), /permission denied/);
+  await fails(rows(U.stranger, "update wt_resources set title = 'x' where title = 'اسم جديد' returning id").then((x) => { if (!x.length) throw new Error("row-level security: nothing updated"); }), /row-level security/);
+  const [task] = await rows(U.rana, "select id from wt_tasks where title = 'دعوة كاتب ضيف'");
+  const [it] = await rows(U.rana, "insert into wt_task_items (task_id, kind, label, url) values ($1, 'link', 'رابط', 'https://example.com') returning id", [task.id]);
+  const [it2] = await rows(U.ghada, "update wt_task_items set label = 'رابط المتجر' where id = $1 returning label", [it.id]);
+  assert.equal(it2.label, "رابط المتجر");
+});
