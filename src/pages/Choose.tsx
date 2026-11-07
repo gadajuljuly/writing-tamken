@@ -33,7 +33,7 @@ export default function Choose() {
       </header>
       <section className="choose-hero">
         <BookHero />
-        <h1 className="choose-heading">أهلًا وسهلًا بكم في أبليكاتسيا الكتابة</h1>
+        <h1 className="choose-heading">أهلًا وسهلًا بكم في تطبيق الكتابة</h1>
       </section>
       <main className="container choose">
         {tiles.map((x) => (
