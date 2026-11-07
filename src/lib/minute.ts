@@ -5,7 +5,7 @@ export type MinuteContent = {
   topics: string[];
   discussions: string[];
   decisions: string[];
-  tasks: { task: string; owners: string[] }[];
+  tasks: { task: string; owners: string[]; done?: boolean }[]; // done: marked ✅ (already in the task list)
   notes: string[];
 };
 
@@ -23,7 +23,7 @@ export function normalizeMinute(x: any): MinuteContent {
     discussions: arr(x?.discussions),
     decisions: arr(x?.decisions),
     tasks: Array.isArray(x?.tasks)
-      ? x.tasks.map((t: any) => ({ task: String(t?.task ?? "").trim(), owners: arr(t?.owners) })).filter((t: any) => t.task)
+      ? x.tasks.map((t: any) => ({ task: String(t?.task ?? "").trim(), owners: arr(t?.owners), ...(t?.done ? { done: true } : {}) })).filter((t: any) => t.task)
       : [],
     notes: arr(x?.notes),
   };

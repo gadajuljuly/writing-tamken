@@ -16,11 +16,13 @@ const toLines = (a: string[]) => a.join("\n");
 const fromLines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 /** Proposed tasks as bullet points; ✅ marks a task that is already in the task list. */
 const tasksToLines = (a: MinuteContent["tasks"], inList: Set<string> = new Set()) =>
-  a.map((x) => `${inList.has(titleKey(x.task)) ? "✅" : "•"} ${x.owners.length ? `${x.task} | ${x.owners.join("، ")}` : x.task}`).join("\n");
-const linesToTasks = (s: string) => fromLines(s).map((l) => l.replace(/^(✅|✔️|✔|•|●|-|\*|–)\s*/u, "")).filter(Boolean).map((l) => {
+  a.map((x) => `${x.done || inList.has(titleKey(x.task)) ? "✅" : "•"} ${x.owners.length ? `${x.task} | ${x.owners.join("، ")}` : x.task}`).join("\n");
+const linesToTasks = (s: string) => fromLines(s).map((line) => {
+  const done = /^(✅|✔️|✔)/u.test(line);
+  const l = line.replace(/^(✅|✔️|✔|•|●|-|\*|–)\s*/u, "");
   const [task, owners = ""] = l.split("|");
-  return { task: task.trim(), owners: owners.split(/[،,]/).map((o) => o.trim()).filter(Boolean) };
-});
+  return { task: task.trim(), owners: owners.split(/[،,]/).map((o) => o.trim()).filter(Boolean), ...(done ? { done: true } : {}) };
+}).filter((x) => x.task);
 
 function Editor({ m }: { m: Minute }) {
   const { t, err, comp } = useComp();
@@ -53,13 +55,24 @@ function Editor({ m }: { m: Minute }) {
     setMsg("");
     try { await approveMinute(m.id, content()); setDirty(false); setMsg(t.saved); } catch (e) { setMsg(err(e)); }
   }
+  const [editTasks, setEditTasks] = useState(false);
+  /** Click • ↔ ✅ by hand (e.g. the same idea is already in the task list in other words). */
+  function toggleDone(i: number) {
+    const list = linesToTasks(d.tasks ?? "");
+    const x = list[i];
+    const on = !!x.done || inList.has(titleKey(x.task));
+    list[i] = { ...x, done: !on };
+    const text = list.map((y) => `${y.done ? "✅" : "•"} ${y.owners.length ? `${y.task} | ${y.owners.join("، ")}` : y.task}`).join("\n");
+    setD({ ...d, tasks: text });
+    saveDraft(m.id, { ...content(), tasks: list }).catch((e) => setMsg(err(e)));
+  }
   // the tasks written in the minutes → the task list, each under the right axis
   const [adding, setAdding] = useState(false);
   async function addTasksToList() {
     setMsg(""); setAdding(true);
     try {
-      const lines = linesToTasks(d.tasks ?? "");
-      if (!lines.length) return;
+      const lines = linesToTasks(d.tasks ?? "").filter((l) => !l.done && !inList.has(titleKey(l.task)));
+      if (!lines.length) { setMsg(`✓ ${t.added}: 0`); return; }
       await saveDraft(m.id, content());
       const open = () => m.suggestions.filter((s) => s.state === "pending");
       for (const l of lines) {
@@ -73,6 +86,9 @@ function Editor({ m }: { m: Minute }) {
         .map((s) => s.id);
       const r = ids.length ? await applySuggestions(m.id, ids) : { added: 0, skipped: 0 };
       const skipped = r.skipped + (lines.length - ids.length);
+      // everything that is now in the task list gets its ✅
+      const all = linesToTasks(d.tasks ?? "").map((x) => ({ ...x, done: true }));
+      await saveDraft(m.id, { ...content(), tasks: all });
       setMsg(`✓ ${t.added}: ${r.added}${skipped ? ` · ${t.dupOf}: ${skipped}` : ""}`);
       setDirty(false);
     } catch (e) { setMsg(err(e)); } finally { setAdding(false); }
@@ -90,9 +106,26 @@ function Editor({ m }: { m: Minute }) {
           <textarea rows={f === "discussions" ? 6 : 3} value={d[f] ?? ""} onChange={set(f)} name={`m-${f}`} />
         </label>
       ))}
-      <label>{t.suggested}
-        <textarea rows={Math.max(3, (d.tasks ?? "").split("\n").length + 1)} value={d.tasks ?? ""} onChange={set("tasks")} name="m-tasks" />
-      </label>
+      <div className="field">
+        <span className="label">{t.suggested}</span>
+        {editTasks ? (
+          <textarea rows={Math.max(3, (d.tasks ?? "").split("\n").length + 1)} value={d.tasks ?? ""} onChange={set("tasks")} name="m-tasks" autoFocus />
+        ) : (
+          <ul className="task-checks" data-testid="task-checks">
+            {linesToTasks(d.tasks ?? "").map((x, i) => {
+              const on = !!x.done || inList.has(titleKey(x.task));
+              return (
+                <li key={i} className={on ? "on" : ""}>
+                  <button type="button" className="check-toggle" aria-pressed={on} title={t.markDone} data-testid="toggle-done"
+                    onClick={() => toggleDone(i)}>{on ? "✓" : ""}</button>
+                  <span>{x.task}{x.owners.length ? ` | ${x.owners.join("، ")}` : ""}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <button type="button" className="link-btn small" onClick={() => setEditTasks(!editTasks)}>{editTasks ? t.doneEditing : `✏️ ${t.editText}`}</button>
+      </div>
       <div className="tasks-to-list">
         <button type="button" className="btn primary" onClick={addTasksToList} disabled={adding || !(d.tasks ?? "").trim()} data-testid="tasks-to-list">
           {adding ? "…" : `➕ ${t.addSelected}`}

@@ -312,3 +312,9 @@ textarea { resize: vertical; }
 .sugg-axis { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 1rem; }
 .sugg-axis .axis-num { width: 26px; height: 26px; font-size: .85rem; }
 .tasks-to-list { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: -4px; }
+/* proposed tasks checklist (click • / ✅) */
+.task-checks { list-style: none; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fffdf8; display: grid; gap: 4px; }
+.task-checks li { display: flex; align-items: center; gap: 8px; font-weight: 400; color: var(--ink); }
+.check-toggle { width: 24px; height: 24px; border: 2px solid #9aa9b8; border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.95rem; font-weight: 700; line-height: 1; display: grid; place-items: center; flex: none; color: #fff; padding: 0; }
+.check-toggle:hover { border-color: #2e9e5b; }
+.task-checks li.on .check-toggle { border-color: #2e9e5b; background: #2e9e5b; color: #fff; }
