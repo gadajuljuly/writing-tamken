@@ -266,11 +266,8 @@ export async function summary(comp: Comp) {
   const statuses = await read<{ status: string }[]>(supabase.from("wt_tasks").select("status").eq("competition", comp).is("deleted_at", null) as any);
   const counts = { not_started: 0, in_progress: 0, done: 0 };
   for (const s of statuses) counts[s.status as keyof typeof counts]++;
-  const [minutes, updates] = await Promise.all([
-    listMinutes(comp, { archived: false, limit: 5 }),
-    history(comp, "", 8),
-  ]);
-  return { counts, minutes, updates };
+  const minutes = await listMinutes(comp, { archived: false, limit: 5 });
+  return { counts, minutes };
 }
 
 export function history(comp: Comp, entity = "", limit = 300) {
