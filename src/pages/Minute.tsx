@@ -74,11 +74,11 @@ function Editor({ m }: { m: Minute }) {
 
 function Suggestions({ m }: { m: Minute }) {
   const { comp, t, err } = useComp();
-  const [sel, setSel] = useState<number[]>([]);
+  const [off, setOff] = useState<number[]>([]); // unticked proposals (all others are added)
   const [msg, setMsg] = useState("");
   const [manual, setManual] = useState({ title: "", axis: 8, assignees: "" });
   const pending = m.suggestions.filter((s) => s.state === "pending");
-  useEffect(() => { setSel((cur) => cur.filter((id) => pending.some((p) => p.id === id))); /* eslint-disable-next-line */ }, [JSON.stringify(pending.map((p) => p.id))]);
+  const sel = pending.filter((p) => !off.includes(p.id)).map((p) => p.id);
 
   const patch = (id: number, body: { title?: string; axis?: number; assignees?: string[] }) => updateSuggestion(id, body).catch((e) => setMsg(err(e)));
   async function apply() {
@@ -86,7 +86,7 @@ function Suggestions({ m }: { m: Minute }) {
     try {
       const r = await applySuggestions(m.id, sel);
       setMsg(`${t.added}: ${r.added}${r.skipped ? ` · ${t.dupOf}: ${r.skipped}` : ""}`);
-      setSel([]);
+      setOff([]);
     } catch (e) { setMsg(err(e)); }
   }
   async function addManual(e: React.FormEvent) {
@@ -99,35 +99,44 @@ function Suggestions({ m }: { m: Minute }) {
   const stateLabel: Record<string, string> = { added: t.added, duplicate: t.dupOf, rejected: t.rejected };
 
   return (
-    <section className="card" data-testid="suggestions">
+    <div className="minute-tasks" data-testid="suggestions">
       <h3>{t.suggested}</h3>
       <p className="muted small">{t.suggestedHint}</p>
-      <ul className="suggestions">
-        {m.suggestions.filter((s) => s.state !== "added" && s.state !== "rejected").map((s) => (
-          <li key={s.id} className={`sugg ${s.state}`} data-testid="suggestion" data-state={s.state}>
-            {s.state === "pending" ? (
-              <input type="checkbox" checked={sel.includes(s.id)} aria-label={s.title}
-                onChange={(e) => setSel(e.target.checked ? [...sel, s.id] : sel.filter((x) => x !== s.id))} disabled={!m.isUploader} />
-            ) : <span className={`badge ${s.state}`}>{stateLabel[s.state]}</span>}
-            <div className="sugg-body">
-              {s.state === "pending" ? (
-                <input defaultValue={s.title} key={s.title} onBlur={(e) => e.target.value !== s.title && patch(s.id, { title: e.target.value })} aria-label={t.title} />
-              ) : <b>{s.title}</b>}
-              {s.duplicate && s.state === "duplicate" && <span className="muted small">↔ {s.duplicate.title}</span>}
-              <div className="sugg-meta">
-                <select value={s.axis} disabled={s.state !== "pending"} onChange={(e) => patch(s.id, { axis: Number(e.target.value) })} aria-label={t.axis}>
-                  {AXES[comp].map((a) => <option key={a.id} value={a.id}>{a.id}. {a.title}</option>)}
-                </select>
-                {s.state === "pending" ? (
-                  <input defaultValue={s.assignees.join("، ")} key={s.assignees.join()} placeholder={t.assignees} aria-label={t.assignees}
-                    onBlur={(e) => patch(s.id, { assignees: e.target.value.split(/[،,]/).map((x) => x.trim()).filter(Boolean) })} />
-                ) : <span className="muted small">{s.assignees.join("، ")}</span>}
-                {s.state === "pending" && m.isUploader && <button className="btn small ghost" onClick={() => setSuggestionState(s.id, "rejected").catch((e) => setMsg(err(e)))}>{t.reject}</button>}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {AXES[comp].map((a) => {
+        const items = m.suggestions.filter((s) => s.axis === a.id && s.state !== "added" && s.state !== "rejected");
+        if (!items.length) return null;
+        return (
+          <div key={a.id} className="sugg-group">
+            <h4 className="sugg-axis"><span className="axis-num">{a.id}</span>{a.title}</h4>
+            <ul className="suggestions">
+              {items.map((s) => (
+                <li key={s.id} className={`sugg ${s.state}`} data-testid="suggestion" data-state={s.state}>
+                  {s.state === "pending" ? (
+                    <input type="checkbox" checked={!off.includes(s.id)} aria-label={s.title}
+                      onChange={(e) => setOff(e.target.checked ? off.filter((x) => x !== s.id) : [...off, s.id])} disabled={!m.isUploader} />
+                  ) : <span className={`badge ${s.state}`}>{stateLabel[s.state]}</span>}
+                  <div className="sugg-body">
+                    {s.state === "pending" ? (
+                      <input defaultValue={s.title} key={s.title} onBlur={(e) => e.target.value !== s.title && patch(s.id, { title: e.target.value })} aria-label={t.title} />
+                    ) : <b>{s.title}</b>}
+                    {s.duplicate && s.state === "duplicate" && <span className="muted small">↔ {s.duplicate.title}</span>}
+                    <div className="sugg-meta">
+                      <select value={s.axis} disabled={s.state !== "pending"} onChange={(e) => patch(s.id, { axis: Number(e.target.value) })} aria-label={t.axis}>
+                        {AXES[comp].map((x) => <option key={x.id} value={x.id}>{x.id}. {x.title}</option>)}
+                      </select>
+                      {s.state === "pending" ? (
+                        <input defaultValue={s.assignees.join("، ")} key={s.assignees.join()} placeholder={t.assignees} aria-label={t.assignees}
+                          onBlur={(e) => patch(s.id, { assignees: e.target.value.split(/[،,]/).map((x) => x.trim()).filter(Boolean) })} />
+                      ) : <span className="muted small">{s.assignees.join("، ")}</span>}
+                      {s.state === "pending" && m.isUploader && <button className="btn small ghost" onClick={() => setSuggestionState(s.id, "rejected").catch((e) => setMsg(err(e)))}>{t.reject}</button>}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
       <form className="inline-add" onSubmit={addManual}>
         <input value={manual.title} onChange={(e) => setManual({ ...manual, title: e.target.value })} placeholder={t.addSuggestionManual} required name="manual-title" />
         <select value={manual.axis} onChange={(e) => setManual({ ...manual, axis: Number(e.target.value) })} aria-label={t.axis}>
@@ -138,11 +147,11 @@ function Suggestions({ m }: { m: Minute }) {
       </form>
       <div className="actions">
         {m.isUploader ? (
-          <button className="btn primary" disabled={sel.length === 0} onClick={apply} data-testid="apply-suggestions">{t.addSelected} ({sel.length})</button>
+          <button className="btn primary big" disabled={sel.length === 0} onClick={apply} data-testid="apply-suggestions">➕ {t.addSelected} ({sel.length})</button>
         ) : <span className="muted small">{t.onlyUploader}</span>}
         {msg && <span className="muted small" role="status">{msg}</span>}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -246,8 +255,10 @@ export default function MinutePage() {
         {showRaw && <pre className="raw">{m.raw_text}</pre>}
       </section>
 
-      <section className="card"><Editor m={m} /></section>
-      <Suggestions m={m} />
+      <section className="card">
+        <Editor m={m} />
+        <Suggestions m={m} />
+      </section>
 
 
     </div>
