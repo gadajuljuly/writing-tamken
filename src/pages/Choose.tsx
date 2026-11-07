@@ -4,6 +4,7 @@ import { DICT, type Comp } from "@/lib/i18n";
 import { progress } from "@/lib/dedupe";
 import { signOut, summary } from "@/lib/data";
 import { Logo } from "@/components/Header";
+import BookHero from "@/components/BookHero";
 
 /** Start screen: two big tiles, one per competition. */
 export default function Choose() {
@@ -30,9 +31,14 @@ export default function Choose() {
           </div>
         </div>
       </header>
+      <section className="choose-hero">
+        <BookHero />
+        <h1 className="choose-heading">أهلًا وسهلًا بكم في أبليكاتسيا الكتابة</h1>
+      </section>
       <main className="container choose">
         {tiles.map((x) => (
           <Link key={x.comp} to={`/${x.comp}`} className="choose-tile card" data-testid={`choose-${x.comp}`} lang={x.lang}>
+            <span className="book-spine" aria-hidden="true" />
             <span className="choose-title">{x.title}</span>
             <span className="choose-sub">{x.sub}</span>
             {pct[x.comp] !== undefined && (
