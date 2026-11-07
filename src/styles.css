@@ -311,3 +311,4 @@ textarea { resize: vertical; }
 .sugg-group { display: grid; gap: 6px; }
 .sugg-axis { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 1rem; }
 .sugg-axis .axis-num { width: 26px; height: 26px; font-size: .85rem; }
+.tasks-to-list { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: -4px; }

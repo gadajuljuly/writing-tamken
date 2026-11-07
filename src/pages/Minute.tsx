@@ -1,6 +1,8 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AXES } from "@/lib/i18n";
+import { guessAxis } from "@/lib/axisGuess";
+import { titleKey } from "@/lib/dedupe";
 import { buildPrompt, parseAnswer } from "@/lib/aiPrompt";
 import { emptyMinute, type MinuteContent } from "@/lib/minute";
 import { fmtDate, useComp, useData } from "@/components/ui";
@@ -26,9 +28,11 @@ function Editor({ m }: { m: Minute }) {
   const [msg, setMsg] = useState("");
   const fill = () => {
     const b = base();
-    setD({ title: b.title, date: b.date, ...Object.fromEntries(LIST_FIELDS.map((f) => [f, toLines(b[f])])), tasks: tasksToLines(b.tasks) });
+    const proposed = m.suggestions.filter((s) => s.state === "pending").map((s) => ({ task: s.title, owners: s.assignees }));
+    setD({ title: b.title, date: b.date, ...Object.fromEntries(LIST_FIELDS.map((f) => [f, toLines(b[f])])),
+      tasks: tasksToLines(b.tasks.length ? b.tasks : proposed) });
   };
-  useEffect(() => { if (!dirty) fill(); /* eslint-disable-next-line */ }, [JSON.stringify(m.draft), dirty]);
+  useEffect(() => { if (!dirty) fill(); /* eslint-disable-next-line */ }, [JSON.stringify(m.draft), JSON.stringify(m.suggestions), dirty]);
 
   const content = (): MinuteContent => ({
     title: d.title ?? "", date: d.date ?? "",
@@ -45,6 +49,30 @@ function Editor({ m }: { m: Minute }) {
     setMsg("");
     try { await approveMinute(m.id, content()); setDirty(false); setMsg(t.saved); } catch (e) { setMsg(err(e)); }
   }
+  // the tasks written in the minutes → the task list, each under the right axis
+  const [adding, setAdding] = useState(false);
+  async function addTasksToList() {
+    setMsg(""); setAdding(true);
+    try {
+      const lines = linesToTasks(d.tasks ?? "");
+      if (!lines.length) return;
+      await saveDraft(m.id, content());
+      const open = () => m.suggestions.filter((s) => s.state === "pending");
+      for (const l of lines) {
+        if (!open().some((s) => titleKey(s.title) === titleKey(l.task))) {
+          await addSuggestion(m.id, { title: l.task, axis: guessAxis(l.task), assignees: l.owners });
+        }
+      }
+      const fresh = await getMinute(m.id);
+      const ids = fresh.suggestions
+        .filter((s) => s.state === "pending" && lines.some((l) => titleKey(l.task) === titleKey(s.title)))
+        .map((s) => s.id);
+      const r = ids.length ? await applySuggestions(m.id, ids) : { added: 0, skipped: 0 };
+      const skipped = r.skipped + (lines.length - ids.length);
+      setMsg(`✓ ${t.added}: ${r.added}${skipped ? ` · ${t.dupOf}: ${skipped}` : ""}`);
+      setDirty(false);
+    } catch (e) { setMsg(err(e)); } finally { setAdding(false); }
+  }
   const label: Record<string, string> = { participants: t.participants, topics: t.topics, discussions: t.discussions, decisions: t.decisions, notes: t.minuteNotes };
 
   return (
@@ -59,96 +87,19 @@ function Editor({ m }: { m: Minute }) {
         </label>
       ))}
       <label>{t.minuteTasks} <span className="muted small">({t.onePerLine}: … | …)</span>
-        <textarea rows={3} value={d.tasks ?? ""} onChange={set("tasks")} name="m-tasks" />
+        <textarea rows={Math.max(3, (d.tasks ?? "").split("\n").length + 1)} value={d.tasks ?? ""} onChange={set("tasks")} name="m-tasks" />
       </label>
+      <div className="tasks-to-list">
+        <button type="button" className="btn primary" onClick={addTasksToList} disabled={adding || !(d.tasks ?? "").trim()} data-testid="tasks-to-list">
+          {adding ? "…" : `➕ ${t.addSelected}`}
+        </button>
+        <span className="muted small">{t.autoAxis}</span>
+      </div>
       <label>{label.notes}<textarea rows={2} value={d.notes ?? ""} onChange={set("notes")} name="m-notes" /></label>
       <div className="actions">
         <button className="btn" onClick={onSaveDraft}>{t.saveDraft}</button>
         {m.isUploader ? <button className="btn primary" onClick={approve} data-testid="approve-minute">{t.approve}</button>
           : <span className="muted small">{t.onlyUploader}</span>}
-        {msg && <span className="muted small" role="status">{msg}</span>}
-      </div>
-    </div>
-  );
-}
-
-function Suggestions({ m }: { m: Minute }) {
-  const { comp, t, err } = useComp();
-  const [off, setOff] = useState<number[]>([]); // unticked proposals (all others are added)
-  const [msg, setMsg] = useState("");
-  const [manual, setManual] = useState({ title: "", axis: 8, assignees: "" });
-  const pending = m.suggestions.filter((s) => s.state === "pending");
-  const sel = pending.filter((p) => !off.includes(p.id)).map((p) => p.id);
-
-  const patch = (id: number, body: { title?: string; axis?: number; assignees?: string[] }) => updateSuggestion(id, body).catch((e) => setMsg(err(e)));
-  async function apply() {
-    setMsg("");
-    try {
-      const r = await applySuggestions(m.id, sel);
-      setMsg(`${t.added}: ${r.added}${r.skipped ? ` · ${t.dupOf}: ${r.skipped}` : ""}`);
-      setOff([]);
-    } catch (e) { setMsg(err(e)); }
-  }
-  async function addManual(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      await addSuggestion(m.id, { ...manual, assignees: manual.assignees.split(/[،,]/).map((x) => x.trim()).filter(Boolean) });
-      setManual({ title: "", axis: 8, assignees: "" });
-    } catch (e) { setMsg(err(e)); }
-  }
-  const stateLabel: Record<string, string> = { added: t.added, duplicate: t.dupOf, rejected: t.rejected };
-
-  return (
-    <div className="minute-tasks" data-testid="suggestions">
-      <h3>{t.suggested}</h3>
-      <p className="muted small">{t.suggestedHint}</p>
-      {AXES[comp].map((a) => {
-        const items = m.suggestions.filter((s) => s.axis === a.id && s.state !== "added" && s.state !== "rejected");
-        if (!items.length) return null;
-        return (
-          <div key={a.id} className="sugg-group">
-            <h4 className="sugg-axis"><span className="axis-num">{a.id}</span>{a.title}</h4>
-            <ul className="suggestions">
-              {items.map((s) => (
-                <li key={s.id} className={`sugg ${s.state}`} data-testid="suggestion" data-state={s.state}>
-                  {s.state === "pending" ? (
-                    <input type="checkbox" checked={!off.includes(s.id)} aria-label={s.title}
-                      onChange={(e) => setOff(e.target.checked ? off.filter((x) => x !== s.id) : [...off, s.id])} disabled={!m.isUploader} />
-                  ) : <span className={`badge ${s.state}`}>{stateLabel[s.state]}</span>}
-                  <div className="sugg-body">
-                    {s.state === "pending" ? (
-                      <input defaultValue={s.title} key={s.title} onBlur={(e) => e.target.value !== s.title && patch(s.id, { title: e.target.value })} aria-label={t.title} />
-                    ) : <b>{s.title}</b>}
-                    {s.duplicate && s.state === "duplicate" && <span className="muted small">↔ {s.duplicate.title}</span>}
-                    <div className="sugg-meta">
-                      <select value={s.axis} disabled={s.state !== "pending"} onChange={(e) => patch(s.id, { axis: Number(e.target.value) })} aria-label={t.axis}>
-                        {AXES[comp].map((x) => <option key={x.id} value={x.id}>{x.id}. {x.title}</option>)}
-                      </select>
-                      {s.state === "pending" ? (
-                        <input defaultValue={s.assignees.join("، ")} key={s.assignees.join()} placeholder={t.assignees} aria-label={t.assignees}
-                          onBlur={(e) => patch(s.id, { assignees: e.target.value.split(/[،,]/).map((x) => x.trim()).filter(Boolean) })} />
-                      ) : <span className="muted small">{s.assignees.join("، ")}</span>}
-                      {s.state === "pending" && m.isUploader && <button className="btn small ghost" onClick={() => setSuggestionState(s.id, "rejected").catch((e) => setMsg(err(e)))}>{t.reject}</button>}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      })}
-      <form className="inline-add" onSubmit={addManual}>
-        <input value={manual.title} onChange={(e) => setManual({ ...manual, title: e.target.value })} placeholder={t.addSuggestionManual} required name="manual-title" />
-        <select value={manual.axis} onChange={(e) => setManual({ ...manual, axis: Number(e.target.value) })} aria-label={t.axis}>
-          {AXES[comp].map((a) => <option key={a.id} value={a.id}>{a.id}. {a.title}</option>)}
-        </select>
-        <input value={manual.assignees} onChange={(e) => setManual({ ...manual, assignees: e.target.value })} placeholder={t.assignees} />
-        <button className="btn small">{t.add}</button>
-      </form>
-      <div className="actions">
-        {m.isUploader ? (
-          <button className="btn primary big" disabled={sel.length === 0} onClick={apply} data-testid="apply-suggestions">➕ {t.addSelected} ({sel.length})</button>
-        ) : <span className="muted small">{t.onlyUploader}</span>}
         {msg && <span className="muted small" role="status">{msg}</span>}
       </div>
     </div>
@@ -257,7 +208,6 @@ export default function MinutePage() {
 
       <section className="card">
         <Editor m={m} />
-        <Suggestions m={m} />
       </section>
 
 

@@ -79,7 +79,7 @@ const ar = {
   freeAiStep2: "2. افتحي Claude أو ChatGPT أو Gemini (الحساب المجاني يكفي)، الصقي النص وأرسليه، ثم انسخي الجواب كاملًا",
   freeAiStep3: "3. الصقي الجواب هنا", freeAiPastePh: "الصقي جواب الذكاء الاصطناعي هنا…", freeAiApply: "📥 تطبيق النتيجة",
   freeAiApplied: "نُظّم المحضر واقتُرحت المهام — راجعيها وعدّليها قبل الاعتماد.",
-  allCompetitions: "المسابقات", taskName: "اسم المهمة", taskDeleted: "حُذفت المهمة", undo: "تراجع ↩", deletedTasks: "المهام المحذوفة", restoreTask: "استرجاع", purge: "حذف نهائي", confirmPurge: "حذف المهمة نهائيًا؟ لا يمكن التراجع بعد ذلك.",
+  allCompetitions: "المسابقات", autoAxis: "كل مهمة تُضاف تلقائيًا إلى المحور المناسب لها", taskName: "اسم المهمة", taskDeleted: "حُذفت المهمة", undo: "تراجع ↩", deletedTasks: "المهام المحذوفة", restoreTask: "استرجاع", purge: "حذف نهائي", confirmPurge: "حذف المهمة نهائيًا؟ لا يمكن التراجع بعد ذلك.",
   joinTitle: "الانضمام إلى اللجنة", join: "انضمام", notConfigured: "لم يُربط التطبيق بـ Supabase بعد (VITE_SUPABASE_URL).",
 };
 type Dict = typeof ar;
@@ -131,7 +131,7 @@ const he: Dict = {
   freeAiStep2: "2. פתחו Claude, ChatGPT או Gemini (חשבון חינמי מספיק), הדביקו ושלחו, ואז העתיקו את כל התשובה",
   freeAiStep3: "3. הדביקו את התשובה כאן", freeAiPastePh: "הדביקו כאן את תשובת הבינה המלאכותית…", freeAiApply: "📥 החלת התוצאה",
   freeAiApplied: "הפרוטוקול אורגן והוצעו משימות — בדקו וערכו לפני האישור.",
-  allCompetitions: "התחרויות", taskName: "שם המשימה", taskDeleted: "המשימה נמחקה", undo: "ביטול ↩", deletedTasks: "משימות שנמחקו", restoreTask: "שחזור", purge: "מחיקה לצמיתות", confirmPurge: "למחוק את המשימה לצמיתות? לא ניתן יהיה לבטל.",
+  allCompetitions: "התחרויות", autoAxis: "כל משימה נוספת אוטומטית לציר המתאים לה", taskName: "שם המשימה", taskDeleted: "המשימה נמחקה", undo: "ביטול ↩", deletedTasks: "משימות שנמחקו", restoreTask: "שחזור", purge: "מחיקה לצמיתות", confirmPurge: "למחוק את המשימה לצמיתות? לא ניתן יהיה לבטל.",
   joinTitle: "הצטרפות לוועדה", join: "הצטרפות", notConfigured: "האפליקציה עדיין לא מחוברת ל-Supabase (VITE_SUPABASE_URL).",
 };
 export const DICT: Record<Comp, Dict> = { ar, he };
