@@ -76,7 +76,7 @@ function Editor({ m }: { m: Minute }) {
   const label: Record<string, string> = { participants: t.participants, topics: t.topics, discussions: t.discussions, decisions: t.decisions, notes: t.minuteNotes };
 
   return (
-    <div className="minute-editor form">
+    <div className="minute-editor form" onBlur={() => { if (dirty) onSaveDraft(); }}>
       <div className="row-2">
         <label>{t.meetingTitle}<input value={d.title ?? ""} onChange={set("title")} name="m-title" /></label>
         <label>{t.meetingDate}<input value={d.date ?? ""} onChange={set("date")} name="m-date" /></label>
@@ -86,20 +86,13 @@ function Editor({ m }: { m: Minute }) {
           <textarea rows={f === "discussions" ? 6 : 3} value={d[f] ?? ""} onChange={set(f)} name={`m-${f}`} />
         </label>
       ))}
-      <label>{t.minuteTasks} <span className="muted small">({t.onePerLine}: … | …)</span>
+      <label>{t.suggested}
         <textarea rows={Math.max(3, (d.tasks ?? "").split("\n").length + 1)} value={d.tasks ?? ""} onChange={set("tasks")} name="m-tasks" />
       </label>
       <div className="tasks-to-list">
         <button type="button" className="btn primary" onClick={addTasksToList} disabled={adding || !(d.tasks ?? "").trim()} data-testid="tasks-to-list">
           {adding ? "…" : `➕ ${t.addSelected}`}
         </button>
-        <span className="muted small">{t.autoAxis}</span>
-      </div>
-      <label>{label.notes}<textarea rows={2} value={d.notes ?? ""} onChange={set("notes")} name="m-notes" /></label>
-      <div className="actions">
-        <button className="btn" onClick={onSaveDraft}>{t.saveDraft}</button>
-        {m.isUploader ? <button className="btn primary" onClick={approve} data-testid="approve-minute">{t.approve}</button>
-          : <span className="muted small">{t.onlyUploader}</span>}
         {msg && <span className="muted small" role="status">{msg}</span>}
       </div>
     </div>
@@ -186,7 +179,6 @@ export default function MinutePage() {
           <h2>{m.title || m.meeting_date || `#${m.id}`}</h2>
           <div className="task-meta">
             {m.status === "approved" && <span className="badge approved">{t.approved}</span>}
-            {m.has_pending_changes && m.status === "approved" && <span className="badge pending">{t.pending}</span>}
             {m.source_file_path && <SourceFile path={m.source_file_path} name={m.source_file_name ?? "file"} />}
           </div>
         </div>
