@@ -10,7 +10,7 @@ export class ApiError extends Error {
   constructor(public code: string, public data: Record<string, unknown> = {}) { super(code); }
 }
 
-const KNOWN = ["invite_only", "bad_invite", "only_admin", "bad_phone", "already_member", "not_self", "duplicate", "only_uploader", "bad_code", "title_required", "not_found", "already_added", "bad_minute", "ai_off", "ai_failed", "ai_timeout", "no_text", "unauthorized"];
+const KNOWN = ["duplicate", "only_uploader", "bad_code", "title_required", "not_found", "already_added", "bad_minute", "ai_off", "ai_failed", "ai_timeout", "no_text", "unauthorized"];
 function fail(error: { message?: string; code?: string; details?: string; hint?: string } | null): never {
   const msg = error?.message ?? "error";
   const code = KNOWN.find((k) => msg.includes(k)) ?? (error?.code === "23505" ? "duplicate" : "error");
@@ -43,84 +43,35 @@ export function startRealtime() {
   channel.subscribe();
 }
 
-// ---------- auth: login by phone (or email) + password; joining only by personal invite ----------
-export type Me = { id: string; email: string; name: string | null; role: "admin" | "member" | null; active: boolean };
-
-const PHONE_DOMAIN = "phone.writing-tamken.app";
-/** Same rule as wt_phone() in the database: digits only; Israeli 05x… → 9725x… */
-export function normalizePhone(p: string) {
-  const d = p.replace(/\D/g, "");
-  return /^0\d{8,9}$/.test(d) ? "972" + d.slice(1) : d;
-}
-const phoneEmail = (phone: string) => `${normalizePhone(phone)}@${PHONE_DOMAIN}`;
-export const displayPhone = (p: string | null | undefined) => (p && p.startsWith("972") ? "0" + p.slice(3) : p ?? "");
+// ---------- auth ----------
+export type Me = { id: string; email: string; name: string | null };
 
 export async function me(): Promise<Me | null> {
   const { data } = await supabase.auth.getSession();
   const u = data.session?.user;
   if (!u) return null;
-  const { data: p, error } = await supabase.from("wt_profiles").select("name, role, active").eq("id", u.id).maybeSingle();
-  if (error) {
-    // database not updated yet (no role/active columns): keep members working as before
-    const { data: old } = await supabase.from("wt_profiles").select("name").eq("id", u.id).maybeSingle();
-    return { id: u.id, email: u.email ?? "", name: old?.name ?? null, role: null, active: !!old };
-  }
-  return { id: u.id, email: u.email ?? "", name: p?.name ?? null, role: (p?.role as Me["role"]) ?? null, active: !!p?.active };
+  const { data: p } = await supabase.from("wt_profiles").select("name").eq("id", u.id).maybeSingle();
+  return { id: u.id, email: u.email ?? "", name: p?.name ?? null };
 }
 
-/** Login with a phone number (members) or an email (accounts created before phone login). */
-export async function signIn(phoneOrEmail: string, password: string) {
-  const id = phoneOrEmail.trim();
-  const email = id.includes("@") ? id : phoneEmail(id);
+export async function signIn(email: string, password: string) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new ApiError(error.message.includes("confirm") ? "confirm_email" : "bad_login");
 }
 
-export async function inviteInfo(token: string) {
-  const { data, error } = await supabase.rpc("wt_invite_info", { p_token: token });
-  if (error) fail(error);
-  return ((data as { name: string; phone: string }[]) ?? [])[0] ?? null;
+export async function signUp(name: string, email: string, password: string, code: string) {
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+  if (error) throw new ApiError(/already/i.test(error.message) ? "email_taken" : /password/i.test(error.message) ? "invalid" : "error");
+  if (!data.session) throw new ApiError("confirm_email"); // email confirmation is on: join after first login
+  await join(code, name);
 }
 
-/** Sign up with a personal invite link: the account is tied to the invited phone number. */
-export async function joinWithInvite(token: string, name: string, password: string) {
-  const info = await inviteInfo(token);
-  if (!info) throw new ApiError("bad_invite");
-  const email = `${info.phone}@${PHONE_DOMAIN}`;
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
-  if (error) {
-    if (!/already/i.test(error.message)) throw new ApiError(/password/i.test(error.message) ? "invalid" : "error");
-    await signIn(email, password); // the account exists (e.g. joined before): just log in
-  } else if (!data.session) throw new ApiError("confirm_email");
-  const { error: e2 } = await supabase.rpc("wt_join_invite", { p_token: token, p_name: name });
-  if (e2) fail(e2);
+export async function join(code: string, name: string) {
+  const { error } = await supabase.rpc("wt_join", { p_code: code, p_name: name });
+  if (error) fail(error);
 }
 
 export const signOut = () => supabase.auth.signOut();
-
-// ---------- admin: who may join ----------
-export type Invite = { id: number; phone: string; name: string; token: string; created_at: string; used_at: string | null; revoked: boolean };
-export type Profile = { id: string; name: string; phone: string | null; role: string; active: boolean; created_at: string };
-
-export const listInvites = () =>
-  read<Invite[]>(supabase.from("wt_invites").select("*").is("used_at", null).eq("revoked", false).order("created_at", { ascending: false }) as any);
-export const listProfiles = () =>
-  read<Profile[]>(supabase.from("wt_profiles").select("id, name, phone, role, active, created_at").order("created_at") as any);
-export async function createInvite(phone: string, name: string): Promise<Invite> {
-  const { data, error } = await supabase.rpc("wt_invite_create", { p_phone: phone, p_name: name });
-  if (error) fail(error);
-  notifyChange();
-  return data as Invite;
-}
-export const revokeInvite = (id: number) => must(supabase.rpc("wt_invite_revoke", { p_id: id }) as any);
-export const setMemberActive = (id: string, active: boolean) => must(supabase.rpc("wt_member_set_active", { p_id: id, p_active: active }) as any);
-
-export function inviteLink(token: string) {
-  return `${location.origin}${location.pathname}#/?invite=${token}`;
-}
-export function whatsappLink(phone: string, text: string) {
-  return `https://wa.me/${normalizePhone(phone)}?text=${encodeURIComponent(text)}`;
-}
 
 // ---------- tasks ----------
 export type TaskItem = { id: number; kind: "file" | "image" | "link" | "suggestion"; label: string; url: string; body: string; file_path: string | null; mime: string | null };
