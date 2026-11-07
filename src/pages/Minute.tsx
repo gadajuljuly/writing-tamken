@@ -4,7 +4,7 @@ import { AXES } from "@/lib/i18n";
 import { buildPrompt, parseAnswer } from "@/lib/aiPrompt";
 import { emptyMinute, type MinuteContent } from "@/lib/minute";
 import { fmtDate, useComp, useData } from "@/components/ui";
-import { addSuggestion, aiMode, applySuggestions, approveMinute, viewUrl, getMinute, organizeMinute, restoreVersion, saveDraft,
+import { addSuggestion, aiMode, applySuggestions, approveMinute, viewUrl, getMinute, organizeMinute, saveDraft,
   setAiResult, setSuggestionState, updateSuggestion, listMembers, listTasks, ApiError, type Minute as MinuteData } from "@/lib/data";
 
 type Minute = MinuteData & { isUploader: boolean };
@@ -17,23 +17,6 @@ const linesToTasks = (s: string) => fromLines(s).map((l) => {
   const [task, owners = ""] = l.split("|");
   return { task: task.trim(), owners: owners.split(/[،,]/).map((o) => o.trim()).filter(Boolean) };
 });
-
-function MinuteView({ c }: { c: MinuteContent }) {
-  const { t } = useComp();
-  const label: Record<string, string> = { participants: t.participants, topics: t.topics, discussions: t.discussions, decisions: t.decisions, notes: t.minuteNotes };
-  return (
-    <div className="minute-view">
-      <h3>{c.title}</h3>
-      {c.date && <p className="muted">{c.date}</p>}
-      {LIST_FIELDS.map((f) => c[f].length > 0 && (
-        <div key={f}><h4>{label[f]}</h4><ul>{c[f].map((x, i) => <li key={i}>{x}</li>)}</ul></div>
-      ))}
-      {c.tasks.length > 0 && (
-        <div><h4>{t.minuteTasks}</h4><ul>{c.tasks.map((x, i) => <li key={i}>{x.task}{x.owners.length ? ` — ${x.owners.join("، ")}` : ""}</li>)}</ul></div>
-      )}
-    </div>
-  );
-}
 
 function Editor({ m }: { m: Minute }) {
   const { t, err } = useComp();
@@ -225,7 +208,6 @@ export default function MinutePage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [showRaw, setShowRaw] = useState(false);
-  const [viewV, setViewV] = useState<number | null>(null);
 
   if (error) return <p className="error">{t.error}</p>;
   if (!m) return <p className="muted">…</p>;
@@ -243,7 +225,7 @@ export default function MinutePage() {
           <Link to={`/${comp}/minutes`} className="muted small">← {t.minutesTitle}</Link>
           <h2>{m.title || m.meeting_date || `#${m.id}`}</h2>
           <div className="task-meta">
-            {m.status === "approved" && <span className="badge approved">{`${t.approved} · ${t.version} ${m.current_version}`}</span>}
+            {m.status === "approved" && <span className="badge approved">{t.approved}</span>}
             {m.has_pending_changes && m.status === "approved" && <span className="badge pending">{t.pending}</span>}
             {m.source_file_path && <SourceFile path={m.source_file_path} name={m.source_file_name ?? "file"} />}
           </div>
@@ -268,21 +250,6 @@ export default function MinutePage() {
       <Suggestions m={m} />
 
 
-      {m.versions.length > 0 && (
-        <section className="card">
-          <h3>{t.versions}</h3>
-          <ul className="list">
-            {m.versions.map((v) => (
-              <li key={v.version}>
-                <button className="link-btn" onClick={() => setViewV(viewV === v.version ? null : v.version)}>{t.version} {v.version}</button>
-                <span className="muted small">{v.approver?.name} · {fmtDate(v.created_at, comp, true)}</span>
-                <button className="btn small ghost" onClick={() => restoreVersion(id, v.version)}>{t.restore}</button>
-                {viewV === v.version && <MinuteView c={v.content} />}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   );
 }
