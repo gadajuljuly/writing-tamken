@@ -267,12 +267,6 @@ export default function MinutePage() {
       <section className="card"><Editor m={m} /></section>
       <Suggestions m={m} />
 
-      {m.linked.length > 0 && (
-        <section className="card">
-          <h3>{t.tasks}</h3>
-          <ul className="list">{m.linked.filter((x: any) => !x.deleted_at).map((x) => <li key={x.id}><span className={`dot-mini ${x.status}`} />{x.title}</li>)}</ul>
-        </section>
-      )}
 
       {m.versions.length > 0 && (
         <section className="card">
