@@ -27,7 +27,7 @@ Good luck!`;
   assert.deepEqual(r.minutes.tasks, [{ task: "طباعة", owners: ["رنا"] }]);
   assert.equal(r.tasks.length, 2);
   assert.equal(r.tasks[0].axis, 5);
-  assert.equal(r.tasks[1].axis, 6);
+  assert.equal(r.tasks[1].axis, 8);
   assert.deepEqual(r.tasks[1].assignees, []);
 });
 

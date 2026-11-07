@@ -110,13 +110,13 @@ test("minutes: AI result → proposals; only uploader approves; duplicates never
     { title: "طباعة شهادات التقدير", description: "", axis: 5, assignees: ["رنا مروات"] },
     { title: "دعوة كاتب ضيف", description: "", axis: 4, assignees: [] },
     { title: "حجز قاعة حفل التتويج", description: "", axis: 1, assignees: [] },  // exists already
-    { title: "مهمة بلا محور", description: "", axis: 9, assignees: [] },          // invalid axis → 6
+    { title: "مهمة بلا محور", description: "", axis: 9, assignees: [] },          // invalid axis → 8 (other tasks)
     { title: "طباعة شهادات التقدير!", description: "", axis: 5, assignees: [] }, // duplicate of a sibling
   ];
   await rows(U.rana, "select wt_minute_set_ai_result($1, $2, $3)", [minuteId, JSON.stringify(draft), JSON.stringify(tasks)]);
   const sugg = await rows(U.ghada, "select id, title, axis, state from wt_suggestions where minute_id = $1 order by id", [minuteId]);
   assert.deepEqual(sugg.map((s) => s.state), ["pending", "pending", "duplicate", "pending", "duplicate"]);
-  assert.equal(sugg[3].axis, 6);
+  assert.equal(sugg[3].axis, 8);
 
   // nothing added before approval
   assert.equal((await rows(U.ghada, "select * from wt_tasks where source_minute_id = $1", [minuteId])).length, 0);
@@ -133,7 +133,7 @@ test("minutes: AI result → proposals; only uploader approves; duplicates never
   assert.deepEqual(linked[0].assignees, ["رنا مروات"]);
 
   const [{ wt_minute_apply: again }] = await rows(U.ghada, "select wt_minute_apply($1, $2)", [minuteId, sugg.map((s) => s.id)]);
-  assert.equal(again.added, 1, "only the remaining pending proposal (axis 6) is added");
+  assert.equal(again.added, 1, "only the remaining pending proposal (axis 8) is added");
   assert.equal((await rows(U.ghada, "select * from wt_tasks where competition = 'ar'")).length, 5);
 });
 

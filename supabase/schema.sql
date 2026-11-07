@@ -119,7 +119,7 @@ create table if not exists public.wt_minute_versions (
 create table if not exists public.wt_tasks (
   id serial primary key,
   competition text not null check (competition in ('ar','he')),
-  axis integer not null default 6 check (axis between 1 and 6),
+  axis integer not null default 8 check (axis between 1 and 8),
   title text not null check (trim(title) <> ''),
   title_key text not null default '',
   description text not null default '',
@@ -155,7 +155,7 @@ create table if not exists public.wt_suggestions (
   minute_id integer not null references public.wt_minutes (id) on delete cascade,
   title text not null,
   description text not null default '',
-  axis integer not null default 6 check (axis between 1 and 6),
+  axis integer not null default 8 check (axis between 1 and 8),
   assignees jsonb not null default '[]',
   state text not null default 'pending' check (state in ('pending','duplicate','added','rejected')),
   duplicate_of integer references public.wt_tasks (id) on delete set null,
@@ -176,6 +176,34 @@ create table if not exists public.wt_audit (
 );
 
 create index if not exists wt_tasks_comp_idx on public.wt_tasks (competition);
+
+-- eight axes (v2): widen the allowed range and move existing tasks to the new axes, once
+alter table public.wt_tasks drop constraint if exists wt_tasks_axis_check;
+alter table public.wt_tasks add constraint wt_tasks_axis_check check (axis between 1 and 8);
+alter table public.wt_tasks alter column axis set default 8;
+alter table public.wt_suggestions drop constraint if exists wt_suggestions_axis_check;
+alter table public.wt_suggestions add constraint wt_suggestions_axis_check check (axis between 1 and 8);
+alter table public.wt_suggestions alter column axis set default 8;
+do $$
+begin
+  if not exists (select 1 from public.wt_settings where key = 'axes_v2') then
+    -- old: 1 org · 2 schools+staff · 3 writing · 4 enrichment · 5 closing · 6 other
+    -- new: 1 org · 2 schools · 3 staff · 4 writing (trainers) · 5 contents · 6 author · 7 closing · 8 other
+    update public.wt_tasks set axis = case
+      when axis = 2 and title in ('لقاءات الطاقم', 'מפגשי צוות') then 3
+      when axis = 2 then 2
+      when axis = 3 and title in ('متابعة المدربات', 'מעקב אחר המנחות') then 4
+      when axis = 3 then 5
+      when axis = 4 then 6
+      when axis = 5 then 7
+      when axis = 6 then 8
+      else axis end
+    where axis between 2 and 6;
+    update public.wt_suggestions set axis = case axis when 3 then 5 when 4 then 6 when 5 then 7 when 6 then 8 else axis end
+    where axis between 3 and 6;
+    insert into public.wt_settings (key, value) values ('axes_v2', 'done');
+  end if;
+end $$;
 
 -- deleted tasks go to a recycle bin (deleted_at) and can be restored
 alter table public.wt_tasks add column if not exists deleted_at timestamptz;
@@ -398,7 +426,7 @@ begin
     if coalesce(trim(t ->> 'title'), '') <> '' then
       insert into wt_suggestions (minute_id, title, description, axis, assignees)
       values (p_id, trim(t ->> 'title'), coalesce(t ->> 'description', ''),
-        case when (t ->> 'axis') ~ '^[1-6]$' then (t ->> 'axis')::int else 6 end, coalesce(t -> 'assignees', '[]'));
+        case when (t ->> 'axis') ~ '^[1-8]$' then (t ->> 'axis')::int else 8 end, coalesce(t -> 'assignees', '[]'));
     end if;
   end loop;
   perform wt_refresh_suggestions(p_id);
@@ -411,7 +439,7 @@ declare m wt_minutes := wt_get_minute(p_minute);
 begin
   if coalesce(trim(p_title), '') = '' then raise exception 'title_required'; end if;
   insert into wt_suggestions (minute_id, title, description, axis, assignees)
-  values (p_minute, trim(p_title), coalesce(p_description, ''), least(6, greatest(1, coalesce(p_axis, 6))), coalesce(p_assignees, '[]'));
+  values (p_minute, trim(p_title), coalesce(p_description, ''), least(8, greatest(1, coalesce(p_axis, 8))), coalesce(p_assignees, '[]'));
   perform wt_refresh_suggestions(p_minute);
 end $$;
 
@@ -424,7 +452,7 @@ begin
   perform wt_get_minute(s.minute_id);
   if s.state = 'added' then raise exception 'already_added'; end if;
   update wt_suggestions set title = coalesce(nullif(trim(p_title), ''), title), description = coalesce(p_description, description),
-    axis = least(6, greatest(1, coalesce(p_axis, axis))), assignees = coalesce(p_assignees, assignees) where id = p_id;
+    axis = least(8, greatest(1, coalesce(p_axis, axis))), assignees = coalesce(p_assignees, assignees) where id = p_id;
   perform wt_refresh_suggestions(s.minute_id);
 end $$;
 

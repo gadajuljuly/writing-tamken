@@ -17,18 +17,22 @@ const reply = (data: unknown, status = 200) =>
 
 const AXES: Record<string, string[]> = {
   ar: [
-    "التحضيرات التقنية والتنظيمية — المكان، المواصلات، التضييفات، الجوائز وتجهيزات حفل التتويج",
-    "التحضير والتنسيق مع المدارس والطاقم — التواصل مع المدارس، لقاءات الطاقم، المنشورات والبوسترات",
-    "تطوير الكتابة والتحضير للمسابقة — مواضيع الكتابة، مئشار التقييم، لجنة التحكيم ومتابعة المدربات",
-    "إثراء التجربة الأدبية والتربوية — استضافة كاتب، قراءة قصصه والأنشطة المرتبطة بها",
+    "التحضيرات التنظيمية — المكان، المواصلات، التضييفات، الجوائز وتجهيزات حفل التتويج",
+    "التنسيق مع المدارس — التواصل مع المدارس، المنشورات والبوسترات",
+    "التنسيق مع الطاقم — لقاءات الطاقم ومتابعة العمل المشترك",
+    "تطوير الكتابة على نطاق المدرّبات والمدارس — متابعة المدرّبات وتطوير الكتابة في المدارس",
+    "تجهيز مضامين المسابقة — مواضيع الكتابة، مئشار التقييم ولجنة التحكيم",
+    "لقاء مع كاتب وأنشطة مرافقة — استضافة كاتب، قراءة قصصه والأنشطة المرتبطة بها",
     "التحضيرات الختامية وما بعد التتويج — شهادات التقدير، رسائل الشكر واستكمال التنسيق",
     "مهام أخرى — كل ما لا ينتمي إلى المحاور السابقة",
   ],
   he: [
-    "היערכות טכנית וארגונית — מקום, הסעות, כיבוד, פרסים והכנות לטקס",
-    "הכנה ותיאום עם בתי הספר והצוות — קשר עם בתי הספר, מפגשי צוות, פרסומים ופוסטרים",
-    "פיתוח הכתיבה והכנה לתחרות — נושאי כתיבה, מחוון הערכה, ועדת שיפוט ומעקב אחר המנחות",
-    "העשרת החוויה הספרותית והחינוכית — אירוח סופר/ת, קריאת סיפוריו והפעילויות הנלוות",
+    "היערכות ארגונית — מקום, הסעות, כיבוד, פרסים והכנות לטקס",
+    "תיאום עם בתי הספר — קשר עם בתי הספר, פרסומים ופוסטרים",
+    "תיאום עם הצוות — מפגשי צוות ומעקב אחר העבודה המשותפת",
+    "פיתוח הכתיבה ברמת המנחות ובתי הספר — מעקב אחר המנחות ופיתוח הכתיבה בבתי הספר",
+    "הכנת תכני התחרות — נושאי כתיבה, מחוון הערכה וועדת שיפוט",
+    "מפגש עם סופר/ת ופעילויות נלוות — אירוח סופר/ת, קריאת סיפוריו והפעילויות הנלוות",
     "היערכות לסיום ואחרי הטקס — תעודות הוקרה, מכתבי תודה והשלמת התיאום",
     "משימות אחרות — כל מה שאינו שייך לצירים הקודמים",
   ],
@@ -42,7 +46,7 @@ function instructions(comp: string, members: string[], existing: string[]) {
 2. Keep EVERY name, number, date, place, detail and decision from the source. Drop nothing.
 3. NEVER invent anything. If something is not in the source, leave it empty ("" or []).
 4. Organize into the template: title, date, participants, topics (agenda items), discussions, decisions, tasks (each with owners), notes.
-5. Then list new_tasks: the NEW action items the committee agreed on, each with a short title, a one-sentence description (only from the source), the responsible people (assignees) if stated, and the best axis number below (use 6 if none clearly fits).
+5. Then list new_tasks: the NEW action items the committee agreed on, each with a short title, a one-sentence description (only from the source), the responsible people (assignees) if stated, and the best axis number below (use 8 if none clearly fits).
 6. Do not list tasks that already exist (see below), even if worded differently.
 
 AXES
@@ -55,7 +59,7 @@ ${existing.map((t) => `- ${t}`).join("\n") || "(none)"}
 
 Reply with ONLY this JSON (no other text):
 {"minutes":{"title":"","date":"","participants":[],"topics":[],"discussions":[],"decisions":[],"tasks":[{"task":"","owners":[]}],"notes":[]},
- "new_tasks":[{"title":"","description":"","axis":6,"assignees":[]}]}`;
+ "new_tasks":[{"title":"","description":"","axis":8,"assignees":[]}]}`;
 }
 
 // ---------- providers ----------
@@ -148,7 +152,7 @@ function parse(text: string) {
         const axis = Number(t?.axis);
         return {
           title: String(t?.title ?? "").trim(), description: String(t?.description ?? "").trim(),
-          axis: Number.isInteger(axis) && axis >= 1 && axis <= 6 ? axis : 6, assignees: strArr(t?.assignees),
+          axis: Number.isInteger(axis) && axis >= 1 && axis <= 8 ? axis : 8, assignees: strArr(t?.assignees),
         };
       })
       .filter((t: any) => t.title),

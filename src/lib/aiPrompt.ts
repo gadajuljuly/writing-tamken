@@ -24,7 +24,7 @@ TASK
 1. Rewrite the raw minutes below into clear, correct, formal ${lang}.
 2. Keep EVERY name, number, date, place, detail and decision from the source. Drop nothing.
 3. NEVER invent anything. If something is not in the source, leave it empty ("" or []).
-4. Then list the NEW action items (tasks) the committee agreed on. For each task choose the best axis number below; if none clearly fits use 6.
+4. Then list the NEW action items (tasks) the committee agreed on. For each task choose the best axis number below; if none clearly fits use 8.
 5. Do not list tasks that already exist (see the list below), even if worded differently.
 
 AXES
@@ -46,7 +46,7 @@ Reply with ONLY one JSON code block, exactly in this shape, and nothing else:
     "tasks": [{ "task": "", "owners": [] }],
     "notes": []
   },
-  "new_tasks": [{ "title": "", "description": "", "axis": 6, "assignees": [] }]
+  "new_tasks": [{ "title": "", "description": "", "axis": 8, "assignees": [] }]
 }
 \`\`\`
 
@@ -92,7 +92,7 @@ export function parseAnswer(text: string): AiAnswer {
       return {
         title: String(t?.title ?? "").trim(),
         description: String(t?.description ?? "").trim(),
-        axis: Number.isInteger(axis) && axis >= 1 && axis <= 6 ? axis : 6,
+        axis: Number.isInteger(axis) && axis >= 1 && axis <= 8 ? axis : 8,
         assignees: strArr(t?.assignees),
       };
     })

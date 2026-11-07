@@ -93,7 +93,7 @@ function Suggestions({ m }: { m: Minute }) {
   const { comp, t, err } = useComp();
   const [sel, setSel] = useState<number[]>([]);
   const [msg, setMsg] = useState("");
-  const [manual, setManual] = useState({ title: "", axis: 6, assignees: "" });
+  const [manual, setManual] = useState({ title: "", axis: 8, assignees: "" });
   const pending = m.suggestions.filter((s) => s.state === "pending");
   useEffect(() => { setSel((cur) => cur.filter((id) => pending.some((p) => p.id === id))); /* eslint-disable-next-line */ }, [JSON.stringify(pending.map((p) => p.id))]);
 
@@ -110,7 +110,7 @@ function Suggestions({ m }: { m: Minute }) {
     e.preventDefault();
     try {
       await addSuggestion(m.id, { ...manual, assignees: manual.assignees.split(/[،,]/).map((x) => x.trim()).filter(Boolean) });
-      setManual({ title: "", axis: 6, assignees: "" });
+      setManual({ title: "", axis: 8, assignees: "" });
     } catch (e) { setMsg(err(e)); }
   }
   const stateLabel: Record<string, string> = { added: t.added, duplicate: t.dupOf, rejected: t.rejected };

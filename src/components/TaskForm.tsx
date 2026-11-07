@@ -10,7 +10,7 @@ export function TaskForm({ task, axis, onClose }: { task?: Task; axis?: number; 
   const [f, setF] = useState({
     title: task?.title ?? "",
     description: task?.description ?? "",
-    axis: task?.axis ?? axis ?? 6,
+    axis: task?.axis ?? axis ?? 8,
     assignees: task?.assignees ?? [],
     status: task?.status ?? "not_started",
     proposal_approved: task?.proposal_approved ?? false,
