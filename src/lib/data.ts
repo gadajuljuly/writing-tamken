@@ -171,6 +171,27 @@ export async function viewUrl(path: string) {
   return /\.(docx?|xlsx?|pptx?)$/i.test(path) ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}` : url;
 }
 
+// ---------- short share links: one link → a page with the chosen materials ----------
+export async function createShare(comp: Comp, ids: number[], title: string) {
+  const { data, error } = await supabase.from("wt_shares").insert({ competition: comp, title, resource_ids: ids }).select("code").single();
+  if (error) fail(error);
+  return `${location.origin}${location.pathname}#/m/${(data as { code: string }).code}`;
+}
+export type SharedItem = { share_title: string; competition: Comp; id: number; title: string; kind: "file" | "link"; url: string; file_path: string | null; mime: string | null };
+/** Works without logging in (anyone with the link). */
+export async function getShare(code: string) {
+  const { data, error } = await supabase.rpc("wt_share_get", { p_code: code });
+  if (error) fail(error);
+  return (data ?? []) as SharedItem[];
+}
+export async function openUrl(item: { kind: string; url: string; file_path: string | null }) {
+  if (item.kind === "link" || !item.file_path) return item.url;
+  const { data, error } = await supabase.storage.from("wt-files").createSignedUrl(item.file_path, 60 * 60 * 24);
+  if (error) throw new ApiError("not_found");
+  return /\.(docx?|xlsx?|pptx?)$/i.test(item.file_path)
+    ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(data.signedUrl)}` : data.signedUrl;
+}
+
 /**
  * Permanent link for sharing a material with people outside the committee
  * (learning material, not sensitive). Opens only that one file; Word/Excel/

@@ -12,6 +12,10 @@ import Minutes from "@/pages/Minutes";
 import Minute from "@/pages/Minute";
 import Choose from "@/pages/Choose";
 import Resources from "@/pages/Resources";
+import Shared from "@/pages/Shared";
+
+/** Public share page: …/#/m/<code> (no login needed). */
+const shareCode = () => location.hash.match(/^#\/m\/([A-Za-z0-9]+)/)?.[1] ?? null;
 
 function CompLayout({ me }: { me: Me }) {
   const { comp = "" } = useParams();
@@ -25,6 +29,12 @@ function CompLayout({ me }: { me: Me }) {
 }
 
 export default function App() {
+  const code = shareCode();
+  if (code) return <Shared code={code} />;
+  return <Main />;
+}
+
+function Main() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const refresh = useCallback(() => { loadMe().then(setMe); }, []);
   useEffect(() => {

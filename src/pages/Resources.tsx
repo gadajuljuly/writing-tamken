@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addResourceFile, addResourceLink, deleteResource, reorderResources, shareUrl, fileUrl, viewUrl, listResources, renameResource, type Resource } from "@/lib/data";
+import { addResourceFile, addResourceLink, createShare, deleteResource, reorderResources, shareUrl, fileUrl, viewUrl, listResources, renameResource, type Resource } from "@/lib/data";
 import { fmtDate, useComp, useData } from "@/components/ui";
 
 const TXT = {
@@ -28,7 +28,8 @@ function ShareButton({ r, onError }: { r: Resource; onError: (e: unknown) => voi
   const [shared, setShared] = useState<string | null>(null);
   async function share() {
     try {
-      const url = await shareUrl(r);
+      // short link to a page with this material (falls back to the direct link if the database is not updated yet)
+      const url = await createShare(comp, [r.id], r.title).catch(() => shareUrl(r));
       const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
       if (nav.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
         await nav.share({ title: r.title, text: r.title, url }).catch(() => {});
@@ -117,9 +118,16 @@ export default function Resources() {
   const [sharedText, setSharedText] = useState<string | null>(null);
   async function shareSelected() {
     try {
-      const chosen = (data ?? []).filter((r) => picked.includes(r.id));
-      const lines = await Promise.all(chosen.map(async (r) => `${r.title}\n${await shareUrl(r)}`));
-      const text = lines.join("\n\n");
+      const chosen = list.filter((r) => picked.includes(r.id));
+      let text: string;
+      try {
+        // one short link → a page with all chosen materials
+        const link = await createShare(comp, chosen.map((r) => r.id), t.resources);
+        text = `${t.resources}:\n${chosen.map((r) => `• ${r.title}`).join("\n")}\n\n${link}`;
+      } catch {
+        const lines = await Promise.all(chosen.map(async (r) => `${r.title}\n${await shareUrl(r)}`));
+        text = lines.join("\n\n");
+      }
       const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
       if (nav.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) { await nav.share({ text }).catch(() => {}); return; }
       await navigator.clipboard.writeText(text).catch(() => {});

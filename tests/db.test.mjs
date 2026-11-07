@@ -224,3 +224,17 @@ test("materials can be put in any order (drag & drop)", async () => {
   assert.deepEqual(got, order);
   await fails(rows(U.stranger, "select wt_resources_reorder($1)", [order]), /unauthorized/);
 });
+
+test("short share link: anyone with the code sees exactly the chosen materials", async () => {
+  const ids = (await rows(U.ghada, "select id from wt_resources where competition = 'ar' order by id")).map((r) => r.id);
+  await rows(U.ghada, "update wt_resources set file_path = 'ar/resources/f1.pdf', kind = 'file' where id = $1", [ids[0]]).catch(() => {});
+  const [{ code }] = await rows(U.rana, "insert into wt_shares (competition, title, resource_ids) values ('ar', 'مواد', $1) returning code", [[ids[1], ids[0]]]);
+  assert.equal(code.length, 10);
+  const got = await pg.transaction(async (tx) => { await tx.exec("set local role anon"); return (await tx.query("select id, title from wt_share_get($1)", [code])).rows; });
+  assert.deepEqual(got.map((r) => r.id), [ids[1], ids[0]], "same order as chosen");
+  const none = await pg.transaction(async (tx) => { await tx.exec("set local role anon"); return (await tx.query("select * from wt_share_get('nope')")).rows; });
+  assert.equal(none.length, 0);
+  await fails(rows(U.stranger, "insert into wt_shares (competition, resource_ids) values ('ar', '{1}')"), /row-level security/);
+  const anonTable = pg.transaction(async (tx) => { await tx.exec("set local role anon"); return (await tx.query("select * from wt_shares")).rows; });
+  await fails(anonTable, /permission denied/);
+});

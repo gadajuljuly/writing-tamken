@@ -300,3 +300,9 @@ textarea { resize: vertical; }
 .list li.resource { grid-template-columns: 18px 22px 28px minmax(0, 1fr) 32px 130px 32px; }
 .resource .pick { width: 18px; height: 18px; margin: 0; cursor: pointer; }
 .pick-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; position: sticky; top: 8px; z-index: 5; border-color: var(--accent-strong); background: var(--bg-soft); }
+/* public share page */
+.shared-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.shared-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fffdf8; cursor: pointer; text-align: start; font-size: 1.05rem; }
+.shared-item:hover { border-color: var(--accent-strong); background: var(--bg-soft); }
+.shared-icon { font-size: 1.5rem; }
+.shared-title { flex: 1; color: var(--navy); font-weight: 700; }

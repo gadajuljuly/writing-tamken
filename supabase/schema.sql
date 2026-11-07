@@ -647,3 +647,47 @@ begin
 end $$;
 revoke all on function public.wt_resources_reorder(integer[]) from public, anon;
 grant execute on function public.wt_resources_reorder(integer[]) to authenticated;
+
+-- =====================================================================
+-- Short share links: one link → a page with the chosen materials
+-- (learning materials, shared on purpose; links do not expire)
+-- =====================================================================
+create table if not exists public.wt_shares (
+  code text primary key default substr(replace(gen_random_uuid()::text, '-', ''), 1, 10),
+  competition text not null check (competition in ('ar','he')),
+  title text not null default '',
+  resource_ids integer[] not null,
+  created_at timestamptz not null default now()
+);
+alter table public.wt_shares enable row level security;
+revoke all on public.wt_shares from anon, authenticated;
+grant select, insert on public.wt_shares to authenticated;
+drop policy if exists wt_read on public.wt_shares;   create policy wt_read on public.wt_shares for select to authenticated using (wt_is_member());
+drop policy if exists wt_insert on public.wt_shares; create policy wt_insert on public.wt_shares for insert to authenticated with check (wt_is_member());
+
+-- anyone with the link: the shared materials (title, kind, link or file path)
+create or replace function public.wt_share_get(p_code text)
+returns table (share_title text, competition text, id integer, title text, kind text, url text, file_path text, mime text)
+language sql stable security definer set search_path = public as $$
+  select s.title, s.competition, r.id, r.title, r.kind, r.url, r.file_path, r.mime
+  from wt_shares s join wt_resources r on r.id = any(s.resource_ids)
+  where s.code = p_code
+  order by array_position(s.resource_ids, r.id);
+$$;
+revoke all on function public.wt_share_get(text) from public;
+grant execute on function public.wt_share_get(text) to anon, authenticated;
+
+create or replace function public.wt_is_shared_path(p_name text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from wt_shares s join wt_resources r on r.id = any(s.resource_ids) where r.file_path = p_name);
+$$;
+revoke all on function public.wt_is_shared_path(text) from public;
+grant execute on function public.wt_is_shared_path(text) to anon, authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'storage') then
+    execute 'drop policy if exists wt_files_shared on storage.objects';
+    execute 'create policy wt_files_shared on storage.objects for select to anon, authenticated using (bucket_id = ''wt-files'' and public.wt_is_shared_path(name))';
+  end if;
+end $$;
