@@ -155,6 +155,7 @@ function QuickAttach({ task }: { task: Task }) {
 
 /** Small previews of what is attached, visible without opening the task. */
 function Thumbs({ task }: { task: Task }) {
+  const { t, err } = useComp();
   if (task.items.length === 0) return null;
   return (
     <div className="thumbs">
@@ -163,6 +164,8 @@ function Thumbs({ task }: { task: Task }) {
           {(i.kind === "image" || i.kind === "file") && <FileItem item={i} />}
           {i.kind === "link" && <a href={i.url} target="_blank" rel="noopener noreferrer">🔗 {i.label || i.url}</a>}
           {i.kind === "suggestion" && <span>💡 {i.body}</span>}
+          <button className="icon-btn thumb-del" title={t.delete} aria-label={`${t.delete}: ${i.label || i.url || i.body}`} data-testid="delete-item"
+            onClick={() => confirm(`${t.delete}: «${i.label || i.url || i.body}»؟`) && deleteItem(i).catch((e) => alert(err(e)))}>🗑</button>
         </span>
       ))}
     </div>
