@@ -10,7 +10,7 @@ const STEPS: Step[] = [
   { when: "31.3.27", what: "كتابة 2-3 قصص (تسليم قصة واحدة)", start: "2027-03-31" },
   { when: "26.4.27", what: "اختيار قصة عن كل صف للمركز", start: "2027-04-26" },
 ];
-const FINAL: Step = { when: "26.5.27", what: "يوم التتويج (مدارس قلم-تمكين، ثوالث وروابع)", start: "2027-05-26" };
+const FINAL: Step = { when: "31.5.27", what: "يوم التتويج (مدارس قلم-تمكين، ثوالث وروابع)", start: "2027-05-31" };
 
 export function Timeline({ today = new Date() }: { today?: Date }) {
   const all = [...STEPS, FINAL];
